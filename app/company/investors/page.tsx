@@ -18,11 +18,52 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreVertical, Mail, CheckCircle, Clock } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Search, MoreVertical, Mail, CheckCircle, Clock, Filter } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function InvestorsPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roundFilter, setRoundFilter] = useState("all");
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [investorToRemove, setInvestorToRemove] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    totalContributed: number;
+  } | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const router = useRouter();
+
+  const handleRemoveInvestor = () => {
+    setIsRemoving(true);
+    console.log("Removing investor:", investorToRemove?.id);
+    // Will implement API call later
+    setTimeout(() => {
+      setIsRemoving(false);
+      setRemoveDialogOpen(false);
+      setInvestorToRemove(null);
+    }, 1000);
+  };
 
   // Mock data
   const investors = [
@@ -94,11 +135,28 @@ export default function InvestorsPage() {
     }
   };
 
-  const filteredInvestors = investors.filter(
-    (investor) =>
-      investor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      investor.email.toLowerCase().includes(searchQuery.toLowerCase())
+  // Get unique rounds for filter
+  const allRounds = Array.from(
+    new Set(investors.flatMap((inv) => inv.rounds))
   );
+
+  const filteredInvestors = investors.filter((investor) => {
+    // Search filter
+    const matchesSearch =
+      investor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      investor.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Status filter
+    const matchesStatus =
+      statusFilter === "all" || investor.status === statusFilter;
+
+    // Round filter
+    const matchesRound =
+      roundFilter === "all" ||
+      investor.rounds.includes(roundFilter);
+
+    return matchesSearch && matchesStatus && matchesRound;
+  });
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -107,10 +165,12 @@ export default function InvestorsPage() {
           <h1 className="text-2xl md:text-3xl font-bold mb-2">Investors</h1>
           <p className="text-sm md:text-base text-muted-foreground">Manage and track your investor relationships</p>
         </div>
-        <Button size="lg" className="gap-2 w-full sm:w-auto">
-          <Plus className="w-4 h-4" />
-          Invite Investors
-        </Button>
+        <Link href="/company/investors/invite">
+          <Button size="lg" className="gap-2 w-full sm:w-auto">
+            <Plus className="w-4 h-4" />
+            Invite Investors
+          </Button>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -172,19 +232,66 @@ export default function InvestorsPage() {
       {/* Investors Table */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle>Investor List</CardTitle>
-              <CardDescription className="text-sm">View and manage all your investors</CardDescription>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle>Investor List</CardTitle>
+                <CardDescription className="text-sm">View and manage all your investors</CardDescription>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search investors..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search investors..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex items-center gap-2 flex-1">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="invited">Invited</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Select value={roundFilter} onValueChange={setRoundFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter by round" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Rounds</SelectItem>
+                  {allRounds.map((round) => (
+                    <SelectItem key={round} value={round}>
+                      {round}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {(statusFilter !== "all" || roundFilter !== "all") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setRoundFilter("all");
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -240,13 +347,23 @@ export default function InvestorsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/company/investors/${investor.id}`)}>
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/company/investors/${investor.id}/edit`)}>
+                          Edit Information
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push("/company/investors/invite")}>
                           <Mail className="w-4 h-4 mr-2" />
                           Send Invitation
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Edit Information</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => {
+                            setInvestorToRemove(investor);
+                            setRemoveDialogOpen(true);
+                          }}
+                        >
                           Remove Investor
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -259,6 +376,43 @@ export default function InvestorsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Remove Investor Dialog */}
+      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this investor?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  This will permanently remove <span className="font-semibold">{investorToRemove?.name}</span> from your investor list.
+                </p>
+                <p className="text-sm">
+                  Email: <span className="font-semibold">{investorToRemove?.email}</span>
+                </p>
+                {investorToRemove && investorToRemove.totalContributed > 0 && (
+                  <p className="text-sm">
+                    Total contributed: <span className="font-semibold">${investorToRemove.totalContributed.toLocaleString()}</span>
+                  </p>
+                )}
+                <p className="text-destructive text-sm font-medium">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveInvestor}
+              disabled={isRemoving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isRemoving ? "Removing..." : "Yes, Remove Investor"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

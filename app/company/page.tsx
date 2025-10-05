@@ -10,7 +10,7 @@ import { formatCompactCurrency, formatCurrency, calculatePercentage } from "@/li
 
 export default function CompanyDashboard() {
   // Filter active rounds only
-  const activeRounds = mockRounds.filter(round => round.status === 'active');
+  const activeRounds = mockRounds.filter((round) => round.status === 'active');
   const stats = mockDashboardStats.company;
 
   const statsConfig = [

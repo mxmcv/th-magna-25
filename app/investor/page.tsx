@@ -1,11 +1,36 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, DollarSign, Target, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useState } from "react";
 
 export default function InvestorDashboard() {
+  const [contributionAmount, setContributionAmount] = useState("");
+  const [selectedToken, setSelectedToken] = useState("USDC");
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
   // Mock data - represents this investor's portfolio
   const stats = [
     {
@@ -77,6 +102,13 @@ export default function InvestorDashboard() {
       endDate: "2025-12-31",
     },
   ];
+
+  const handleContribute = () => {
+    console.log("Contributing:", { selectedRoundId, contributionAmount, selectedToken });
+    // Will implement API call later
+    setContributionAmount("");
+    setSelectedRoundId(null);
+  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -226,9 +258,65 @@ export default function InvestorDashboard() {
                       </span>
                     </div>
 
-                    <Button className="w-full" variant={myInvestment ? "outline" : "default"}>
-                      {myInvestment ? "Add More" : "Contribute"}
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          className="w-full" 
+                          variant={myInvestment ? "outline" : "default"}
+                          onClick={() => setSelectedRoundId(round.id)}
+                        >
+                          {myInvestment ? "Add More" : "Contribute"}
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Contribute to {round.name}</DialogTitle>
+                          <DialogDescription>
+                            Enter your contribution amount and select your preferred stablecoin
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="amount">Contribution Amount (USD)</Label>
+                            <Input
+                              id="amount"
+                              type="number"
+                              placeholder={`Min: $${round.minContribution.toLocaleString()}`}
+                              value={contributionAmount}
+                              onChange={(e) => setContributionAmount(e.target.value)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Min: ${(round.minContribution / 1000).toFixed(0)}K • Max: $
+                              {myInvestment
+                                ? ((round.maxContribution - myInvestment.myContribution) / 1000).toFixed(0)
+                                : (round.maxContribution / 1000).toFixed(0)}
+                              K
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="token">Stablecoin</Label>
+                            <Select value={selectedToken} onValueChange={setSelectedToken}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {round.acceptedTokens.map((token) => (
+                                  <SelectItem key={token} value={token}>
+                                    {token}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                          </DialogClose>
+                          <Button onClick={handleContribute}>Confirm Contribution</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </CardContent>
                 </Card>
               );

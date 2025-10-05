@@ -1,21 +1,50 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Plus, MoreVertical, Users, Target } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/dashboard/status-badge";
 import { mockRounds } from "@/lib/mock-data";
 import { formatCompactCurrency, formatDate, calculatePercentage } from "@/lib/formatters";
 
 export default function RoundsPage() {
   const rounds = mockRounds;
+  const router = useRouter();
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [roundToClose, setRoundToClose] = useState<typeof mockRounds[0] | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleCloseRound = () => {
+    setIsClosing(true);
+    console.log("Closing round:", roundToClose?.id);
+    // Will implement API call later
+    setTimeout(() => {
+      setIsClosing(false);
+      setCloseDialogOpen(false);
+      setRoundToClose(null);
+    }, 1000);
+  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -56,14 +85,27 @@ export default function RoundsPage() {
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>View Details</DropdownMenuItem>
-                      <DropdownMenuItem>Edit Round</DropdownMenuItem>
-                      <DropdownMenuItem>Manage Investors</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
-                        Close Round
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/company/rounds/${round.id}`)}>
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/company/rounds/${round.id}/edit`)}>
+                            Edit Round
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push("/company/investors/invite")}>
+                            Invite Investors
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => {
+                              setRoundToClose(round);
+                              setCloseDialogOpen(true);
+                            }}
+                            disabled={round.status === "COMPLETED"}
+                          >
+                            Close Round
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </CardHeader>
@@ -124,13 +166,26 @@ export default function RoundsPage() {
                 {/* Actions */}
                 {isActive && (
                   <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => router.push(`/company/rounds/${round.id}/investors`)}
+                    >
                       View Investors
                     </Button>
-                    <Button variant="outline" className="flex-1">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => router.push("/company/investors/invite")}
+                    >
                       Invite Investors
                     </Button>
-                    <Button className="flex-1">View Details</Button>
+                    <Button 
+                      className="flex-1"
+                      onClick={() => router.push(`/company/rounds/${round.id}`)}
+                    >
+                      View Details
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -138,6 +193,40 @@ export default function RoundsPage() {
           );
         })}
       </div>
+
+      {/* Close Round Dialog */}
+      <AlertDialog open={closeDialogOpen} onOpenChange={setCloseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close this round?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  This will permanently close <span className="font-semibold">{roundToClose?.name}</span> and prevent any new contributions.
+                </p>
+                {roundToClose && (
+                  <p className="text-sm">
+                    Current progress: <span className="font-semibold">${(roundToClose.raised / 1000000).toFixed(2)}M</span> of <span className="font-semibold">${(roundToClose.target / 1000000).toFixed(1)}M</span> ({((roundToClose.raised / roundToClose.target) * 100).toFixed(1)}% funded)
+                  </p>
+                )}
+                <p className="text-destructive text-sm font-medium">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCloseRound}
+              disabled={isClosing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isClosing ? "Closing..." : "Yes, Close Round"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

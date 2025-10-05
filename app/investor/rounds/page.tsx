@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -198,15 +199,17 @@ export default function AvailableRoundsPage() {
 
                 {/* Action Button */}
                 {(!hasInvested || canContributeMore) && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        className="w-full"
-                        onClick={() => setSelectedRound(round.id)}
-                      >
-                        {hasInvested ? "Add to Investment" : "Contribute to Round"}
-                      </Button>
-                    </DialogTrigger>
+                  <div className="pt-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all"
+                          onClick={() => setSelectedRound(round.id)}
+                        >
+                          {hasInvested ? "Add to Investment" : "Contribute to Round"}
+                        </Button>
+                      </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Contribute to {round.name}</DialogTitle>
@@ -249,11 +252,14 @@ export default function AvailableRoundsPage() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline">Cancel</Button>
+                      <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                      </DialogClose>
                       <Button onClick={handleContribute}>Confirm Contribution</Button>
                     </DialogFooter>
                   </DialogContent>
-                </Dialog>
+                  </Dialog>
+                  </div>
                 )}
               </CardContent>
             </Card>
