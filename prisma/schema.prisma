@@ -1,0 +1,149 @@
+// Prisma Schema for Magna Fundraising Platform
+// Database: Neon (PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// CORE MODELS
+// ============================================================================
+
+model Round {
+  id              String   @id @default(uuid())
+  name            String
+  companyId       String
+  description     String?
+  target          Float    // Target amount in USD
+  raised          Float    @default(0)
+  minContribution Float
+  maxContribution Float
+  status          RoundStatus @default(DRAFT)
+  acceptedTokens  String[] // ["USDC", "USDT"]
+  startDate       DateTime
+  endDate         DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contributions   Contribution[]
+  invitations     Invitation[]
+
+  @@index([status])
+  @@index([companyId])
+}
+
+model Investor {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  walletAddress String?  @unique
+  kycStatus     KycStatus @default(PENDING)
+  kycDocuments  Json?    // Flexible JSON for various document types
+  joinedDate    DateTime @default(now())
+  status        InvestorStatus @default(ACTIVE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  contributions Contribution[]
+  invitations   Invitation[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model Contribution {
+  id              String   @id @default(uuid())
+  roundId         String
+  investorId      String
+  amount          Float    // Amount in USD
+  token           String   // "USDC" or "USDT"
+  status          ContributionStatus @default(PENDING)
+  transactionHash String?  @unique
+  walletAddress   String?
+  contributedAt   DateTime @default(now())
+  confirmedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  round           Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  investor        Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@index([roundId, investorId])
+  @@index([status])
+  @@index([contributedAt])
+}
+
+model Invitation {
+  id          String   @id @default(uuid())
+  roundId     String
+  investorId  String
+  status      InvitationStatus @default(SENT)
+  sentAt      DateTime @default(now())
+  respondedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  round       Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  investor    Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, investorId])
+  @@index([status])
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum RoundStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  COMPLETED
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum InvestorStatus {
+  INVITED
+  ACTIVE
+  INACTIVE
+}
+
+enum ContributionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum InvitationStatus {
+  SENT
+  VIEWED
+  ACCEPTED
+  DECLINED
+}
+
+// ============================================================================
+// AUDIT LOG (Optional - for advanced tracking)
+// ============================================================================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  entityType  String   // "Round", "Contribution", etc.
+  entityId    String
+  action      String   // "CREATE", "UPDATE", "DELETE"
+  userId      String   // Who performed the action
+  changes     Json?    // What changed
+  timestamp   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([timestamp])
+}
