@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, DollarSign, Calendar, Coins } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -29,115 +30,195 @@ export default function NewRoundPage() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="mb-6 md:mb-8">
         <Link href="/company/rounds">
-          <Button variant="ghost" className="gap-2 mb-4">
+          <Button variant="ghost" className="gap-2 mb-4 -ml-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Rounds
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold mb-2">Create New Round</h1>
-        <p className="text-muted-foreground">Set up a new fundraising round for your project</p>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">Create New Round</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Set up a new fundraising round for your project</p>
       </div>
 
-      <div className="max-w-3xl">
-        <form onSubmit={handleSubmit}>
+      <div className="max-w-3xl mx-auto">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Round Details</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-primary" />
+                </div>
+                Basic Information
+              </CardTitle>
               <CardDescription>
-                Configure the parameters for your fundraising round
+                Name your round and set the fundraising target
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Round Name */}
               <div className="space-y-2">
-                <Label htmlFor="name">Round Name</Label>
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Round Name <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="name"
                   placeholder="e.g., Seed Round, Series A"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
+                  className="h-11"
                 />
               </div>
+
+              <Separator />
 
               {/* Target Amount */}
               <div className="space-y-2">
-                <Label htmlFor="target">Target Amount (USD)</Label>
-                <Input
-                  id="target"
-                  type="number"
-                  placeholder="5000000"
-                  value={formData.target}
-                  onChange={(e) => setFormData({ ...formData, target: e.target.value })}
-                  required
-                />
-                <p className="text-sm text-muted-foreground">
-                  Total amount you aim to raise in this round
+                <Label htmlFor="target" className="text-sm font-medium">
+                  Fundraising Target <span className="text-destructive">*</span>
+                </Label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    $
+                  </div>
+                  <Input
+                    id="target"
+                    type="number"
+                    placeholder="5,000,000"
+                    value={formData.target}
+                    onChange={(e) => setFormData({ ...formData, target: e.target.value })}
+                    required
+                    className="h-11 pl-7"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Total amount you aim to raise in USD
                 </p>
               </div>
 
+              <Separator />
+
               {/* Contribution Limits */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="minContribution">Minimum Contribution (USD)</Label>
-                  <Input
-                    id="minContribution"
-                    type="number"
-                    placeholder="10000"
-                    value={formData.minContribution}
-                    onChange={(e) =>
-                      setFormData({ ...formData, minContribution: e.target.value })
-                    }
-                    required
-                  />
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium mb-1">Contribution Limits</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Set minimum and maximum investment amounts per investor
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxContribution">Maximum Contribution (USD)</Label>
-                  <Input
-                    id="maxContribution"
-                    type="number"
-                    placeholder="100000"
-                    value={formData.maxContribution}
-                    onChange={(e) =>
-                      setFormData({ ...formData, maxContribution: e.target.value })
-                    }
-                    required
-                  />
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="minContribution" className="text-sm font-medium">
+                      Minimum <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </div>
+                      <Input
+                        id="minContribution"
+                        type="number"
+                        placeholder="10,000"
+                        value={formData.minContribution}
+                        onChange={(e) =>
+                          setFormData({ ...formData, minContribution: e.target.value })
+                        }
+                        required
+                        className="h-11 pl-7"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxContribution" className="text-sm font-medium">
+                      Maximum <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </div>
+                      <Input
+                        id="maxContribution"
+                        type="number"
+                        placeholder="100,000"
+                        value={formData.maxContribution}
+                        onChange={(e) =>
+                          setFormData({ ...formData, maxContribution: e.target.value })
+                        }
+                        required
+                        className="h-11 pl-7"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Dates */}
-              <div className="grid md:grid-cols-2 gap-4">
+          {/* Timeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-primary" />
+                </div>
+                Timeline
+              </CardTitle>
+              <CardDescription>
+                Set the start and end dates for this fundraising round
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
+                  <Label htmlFor="startDate" className="text-sm font-medium">
+                    Start Date <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="startDate"
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                     required
+                    className="h-11"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endDate">End Date</Label>
+                  <Label htmlFor="endDate" className="text-sm font-medium">
+                    End Date <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="endDate"
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                     required
+                    className="h-11"
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Accepted Tokens */}
-              <div className="space-y-2">
-                <Label>Accepted Stablecoins</Label>
-                <div className="flex gap-4 mt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
+          {/* Accepted Tokens */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Coins className="w-4 h-4 text-primary" />
+                </div>
+                Accepted Tokens
+              </CardTitle>
+              <CardDescription>
+                Select which stablecoins investors can use for contributions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <label className="relative flex items-center justify-center p-4 border-2 border-border rounded-lg cursor-pointer hover:border-primary/40 transition-colors bg-card has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5">
                     <input
                       type="checkbox"
                       checked={formData.acceptedTokens.USDC}
@@ -150,11 +231,22 @@ export default function NewRoundPage() {
                           },
                         })
                       }
-                      className="w-4 h-4 rounded border-border"
+                      className="sr-only"
                     />
-                    <span className="text-sm font-medium">USDC</span>
+                    <div className="text-center">
+                      <div className="font-semibold text-lg mb-1">USDC</div>
+                      <div className="text-xs text-muted-foreground">USD Coin</div>
+                    </div>
+                    {formData.acceptedTokens.USDC && (
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
+
+                  <label className="relative flex items-center justify-center p-4 border-2 border-border rounded-lg cursor-pointer hover:border-primary/40 transition-colors bg-card has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5">
                     <input
                       type="checkbox"
                       checked={formData.acceptedTokens.USDT}
@@ -167,25 +259,36 @@ export default function NewRoundPage() {
                           },
                         })
                       }
-                      className="w-4 h-4 rounded border-border"
+                      className="sr-only"
                     />
-                    <span className="text-sm font-medium">USDT</span>
+                    <div className="text-center">
+                      <div className="font-semibold text-lg mb-1">USDT</div>
+                      <div className="text-xs text-muted-foreground">Tether</div>
+                    </div>
+                    {formData.acceptedTokens.USDT && (
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
                   </label>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Select which stablecoins investors can use for contributions
+                <p className="text-xs text-muted-foreground">
+                  At least one stablecoin must be selected
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          <div className="flex gap-4 mt-6">
+          {/* Action Buttons */}
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
             <Link href="/company/rounds" className="flex-1">
-              <Button type="button" variant="outline" className="w-full">
+              <Button type="button" variant="outline" className="w-full h-11">
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" className="flex-1">
+            <Button type="submit" className="flex-1 h-11">
               Create Round
             </Button>
           </div>

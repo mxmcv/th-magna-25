@@ -101,20 +101,20 @@ export default function InvestorsPage() {
   );
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Investors</h1>
-          <p className="text-muted-foreground">Manage and track your investor relationships</p>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Investors</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Manage and track your investor relationships</p>
         </div>
-        <Button size="lg" className="gap-2">
+        <Button size="lg" className="gap-2 w-full sm:w-auto">
           <Plus className="w-4 h-4" />
           Invite Investors
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-4 mb-8">
+      <div className="grid gap-4 md:gap-6 grid-cols-2 md:grid-cols-4 mb-6 md:mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -172,12 +172,12 @@ export default function InvestorsPage() {
       {/* Investors Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <CardTitle>Investor List</CardTitle>
-              <CardDescription>View and manage all your investors</CardDescription>
+              <CardDescription className="text-sm">View and manage all your investors</CardDescription>
             </div>
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search investors..."
@@ -189,6 +189,7 @@ export default function InvestorsPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -255,6 +256,7 @@ export default function InvestorsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,100 +1,64 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Plus, TrendingUp, Users, CircleDollarSign, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { StatusBadge } from "@/components/dashboard/status-badge";
+import { mockRounds, mockRecentActivity, mockDashboardStats } from "@/lib/mock-data";
+import { formatCompactCurrency, formatCurrency, calculatePercentage } from "@/lib/formatters";
 
 export default function CompanyDashboard() {
-  // Mock data - will be replaced with actual data from API
-  const stats = [
+  // Filter active rounds only
+  const activeRounds = mockRounds.filter(round => round.status === 'active');
+  const stats = mockDashboardStats.company;
+
+  const statsConfig = [
     {
       title: "Total Raised",
-      value: "$4.2M",
-      change: "+12.5%",
+      value: formatCompactCurrency(stats.totalRaised),
+      subtitle: stats.totalRaisedChange,
       icon: CircleDollarSign,
     },
     {
       title: "Active Rounds",
-      value: "2",
-      change: "1 ending soon",
+      value: stats.activeRounds.toString(),
+      subtitle: stats.activeRoundsInfo,
       icon: TrendingUp,
     },
     {
       title: "Total Investors",
-      value: "47",
-      change: "+8 this month",
+      value: stats.totalInvestors.toString(),
+      subtitle: stats.totalInvestorsChange,
       icon: Users,
     },
   ];
 
-  const activeRounds = [
-    {
-      id: "1",
-      name: "Seed Round",
-      target: 5000000,
-      raised: 3200000,
-      minContribution: 10000,
-      maxContribution: 100000,
-      participants: 28,
-      status: "active",
-      endDate: "2025-11-30",
-    },
-    {
-      id: "2",
-      name: "Series A",
-      target: 10000000,
-      raised: 1000000,
-      minContribution: 50000,
-      maxContribution: 500000,
-      participants: 5,
-      status: "active",
-      endDate: "2025-12-31",
-    },
-  ];
-
-  const recentActivity = [
-    { investor: "John Smith", amount: 50000, round: "Seed Round", time: "2 hours ago" },
-    { investor: "Sarah Johnson", amount: 75000, round: "Series A", time: "5 hours ago" },
-    { investor: "Mike Chen", amount: 25000, round: "Seed Round", time: "1 day ago" },
-  ];
-
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your fundraising activity</p>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Dashboard</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Overview of your fundraising activity</p>
         </div>
         <Link href="/company/rounds/new">
-          <Button size="lg" className="gap-2">
+          <Button size="lg" className="gap-2 w-full sm:w-auto">
             <Plus className="w-4 h-4" />
-            New Round
+            Create Round
           </Button>
         </Link>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold mb-1">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">{stat.change}</p>
-            </CardContent>
-          </Card>
+      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mb-6 md:mb-8">
+        {statsConfig.map((stat) => (
+          <StatCard key={stat.title} {...stat} />
         ))}
       </div>
 
       {/* Active Rounds */}
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-4 md:gap-6 mb-6 md:mb-8">
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -118,9 +82,7 @@ export default function CompanyDashboard() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold">{round.name}</h3>
-                        <Badge variant="secondary" className="bg-primary/10 text-primary">
-                          Active
-                        </Badge>
+                        <StatusBadge status={round.status} />
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {round.participants} participants • Ends{" "}
@@ -129,19 +91,18 @@ export default function CompanyDashboard() {
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold">
-                        ${(round.raised / 1000000).toFixed(1)}M
+                        {formatCompactCurrency(round.raised)}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        of ${(round.target / 1000000).toFixed(1)}M
+                        of {formatCompactCurrency(round.target)}
                       </div>
                     </div>
                   </div>
-                  <Progress value={progress} className="h-2" />
+                  <Progress value={calculatePercentage(round.raised, round.target)} className="h-2" />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{progress.toFixed(1)}% funded</span>
+                    <span>{calculatePercentage(round.raised, round.target)}% funded</span>
                     <span>
-                      ${(round.minContribution / 1000).toFixed(0)}K - $
-                      {(round.maxContribution / 1000).toFixed(0)}K per investor
+                      {formatCompactCurrency(round.minContribution)} - {formatCompactCurrency(round.maxContribution)} per investor
                     </span>
                   </div>
                 </div>
@@ -159,8 +120,8 @@ export default function CompanyDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-center justify-between py-2">
+            {mockRecentActivity.map((activity) => (
+              <div key={activity.id} className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                     <Users className="w-5 h-5 text-primary" />
@@ -172,7 +133,7 @@ export default function CompanyDashboard() {
                 </div>
                 <div className="text-right">
                   <p className="font-semibold">
-                    ${activity.amount.toLocaleString()}
+                    {formatCurrency(activity.amount)}
                   </p>
                   <p className="text-xs text-muted-foreground">{activity.time}</p>
                 </div>

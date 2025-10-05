@@ -78,16 +78,16 @@ export default function ContributionHistoryPage() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Contribution History</h1>
-        <p className="text-muted-foreground">
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">Contribution History</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Track all your contributions and investment performance
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
+      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mb-6 md:mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -126,7 +126,7 @@ export default function ContributionHistoryPage() {
       </div>
 
       {/* Contributions by Round */}
-      <Card className="mb-8">
+      <Card className="mb-6 md:mb-8">
         <CardHeader>
           <CardTitle>Your Contributions</CardTitle>
           <CardDescription>Detailed breakdown of all your investments</CardDescription>
@@ -145,7 +145,7 @@ export default function ContributionHistoryPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-lg">{contribution.roundName}</h3>
-                      <Badge variant={isCompleted ? "secondary" : "outline"}>
+                      <Badge className={isCompleted ? "bg-green-500/10 text-green-500" : "bg-primary/10 text-primary"}>
                         {isCompleted ? "Completed" : "Active"}
                       </Badge>
                     </div>
@@ -197,9 +197,10 @@ export default function ContributionHistoryPage() {
       <Card>
         <CardHeader>
           <CardTitle>Transaction History</CardTitle>
-          <CardDescription>All contribution transactions in chronological order</CardDescription>
+          <CardDescription className="text-sm">All contribution transactions in chronological order</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -241,6 +242,7 @@ export default function ContributionHistoryPage() {
                 ))}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

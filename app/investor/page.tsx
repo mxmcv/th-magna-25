@@ -79,14 +79,14 @@ export default function InvestorDashboard() {
   ];
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Investor Dashboard</h1>
-        <p className="text-muted-foreground">Track your investments and discover new opportunities</p>
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">Investor Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Track your investments and discover new opportunities</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
+      <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mb-6 md:mb-8">
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -104,7 +104,7 @@ export default function InvestorDashboard() {
       </div>
 
       {/* My Active Investments */}
-      <Card className="mb-8">
+      <Card className="mb-6 md:mb-8">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -178,7 +178,7 @@ export default function InvestorDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             {availableRounds.map((round) => {
               const progress = (round.raised / round.target) * 100;
               const myInvestment = myInvestments.find(

@@ -75,15 +75,15 @@ export default function AvailableRoundsPage() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Available Rounds</h1>
-        <p className="text-muted-foreground">
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">Available Rounds</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Explore active fundraising rounds and make contributions
         </p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-4 md:gap-6">
         {rounds.map((round) => {
           const progress = (round.raised / round.target) * 100;
           const hasInvested = round.myContribution > 0;
@@ -91,7 +91,7 @@ export default function AvailableRoundsPage() {
           const remainingAllocation = round.maxContribution - round.myContribution;
 
           return (
-            <Card key={round.id} className="border-primary/30">
+            <Card key={round.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -182,22 +182,31 @@ export default function AvailableRoundsPage() {
                   </div>
                 )}
 
+                {/* Max Investment Notice */}
+                {hasInvested && !canContributeMore && (
+                  <div className="flex items-center justify-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                    <div className="text-sm text-center">
+                      <span className="font-medium text-primary/70">
+                        Maximum investment reached
+                      </span>
+                      <span className="text-muted-foreground text-xs block mt-0.5">
+                        You've contributed ${(round.myContribution / 1000).toFixed(0)}K
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Button */}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button
-                      className="w-full"
-                      size="lg"
-                      onClick={() => setSelectedRound(round.id)}
-                      disabled={!canContributeMore}
-                    >
-                      {hasInvested
-                        ? canContributeMore
-                          ? "Contribute More"
-                          : "Max Investment Reached"
-                        : "Contribute to Round"}
-                    </Button>
-                  </DialogTrigger>
+                {(!hasInvested || canContributeMore) && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        className="w-full"
+                        onClick={() => setSelectedRound(round.id)}
+                      >
+                        {hasInvested ? "Add to Investment" : "Contribute to Round"}
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Contribute to {round.name}</DialogTitle>
@@ -245,6 +254,7 @@ export default function AvailableRoundsPage() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+                )}
               </CardContent>
             </Card>
           );

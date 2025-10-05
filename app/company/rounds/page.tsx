@@ -10,98 +10,44 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { StatusBadge } from "@/components/dashboard/status-badge";
+import { mockRounds } from "@/lib/mock-data";
+import { formatCompactCurrency, formatDate, calculatePercentage } from "@/lib/formatters";
 
 export default function RoundsPage() {
-  // Mock data
-  const rounds = [
-    {
-      id: "1",
-      name: "Seed Round",
-      target: 5000000,
-      raised: 3200000,
-      minContribution: 10000,
-      maxContribution: 100000,
-      participants: 28,
-      status: "active",
-      acceptedTokens: ["USDC", "USDT"],
-      startDate: "2025-09-01",
-      endDate: "2025-11-30",
-    },
-    {
-      id: "2",
-      name: "Series A",
-      target: 10000000,
-      raised: 1000000,
-      minContribution: 50000,
-      maxContribution: 500000,
-      participants: 5,
-      status: "active",
-      acceptedTokens: ["USDC", "USDT"],
-      startDate: "2025-10-01",
-      endDate: "2025-12-31",
-    },
-    {
-      id: "3",
-      name: "Pre-Seed",
-      target: 1000000,
-      raised: 1000000,
-      minContribution: 5000,
-      maxContribution: 50000,
-      participants: 14,
-      status: "completed",
-      acceptedTokens: ["USDC"],
-      startDate: "2025-06-01",
-      endDate: "2025-08-31",
-    },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-primary/10 text-primary";
-      case "completed":
-        return "bg-green-500/10 text-green-500";
-      case "draft":
-        return "bg-muted text-muted-foreground";
-      default:
-        return "bg-muted text-muted-foreground";
-    }
-  };
+  const rounds = mockRounds;
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Fundraising Rounds</h1>
-          <p className="text-muted-foreground">Create and manage your fundraising rounds</p>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Fundraising Rounds</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Create and manage your fundraising rounds</p>
         </div>
         <Link href="/company/rounds/new">
-          <Button size="lg" className="gap-2">
+          <Button size="lg" className="gap-2 w-full sm:w-auto">
             <Plus className="w-4 h-4" />
             Create Round
           </Button>
         </Link>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-4 md:gap-6">
         {rounds.map((round) => {
           const progress = (round.raised / round.target) * 100;
           const isActive = round.status === "active";
 
           return (
-            <Card key={round.id} className={isActive ? "border-primary/50" : ""}>
+            <Card key={round.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CardTitle className="text-2xl">{round.name}</CardTitle>
-                      <Badge className={getStatusColor(round.status)}>
-                        {round.status.charAt(0).toUpperCase() + round.status.slice(1)}
-                      </Badge>
+                      <StatusBadge status={round.status} />
                     </div>
                     <CardDescription>
-                      {new Date(round.startDate).toLocaleDateString()} -{" "}
-                      {new Date(round.endDate).toLocaleDateString()}
+                      {formatDate(round.startDate)} - {formatDate(round.endDate)}
                     </CardDescription>
                   </div>
                   <DropdownMenu>
@@ -127,15 +73,14 @@ export default function RoundsPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Progress</span>
                     <span className="font-medium">
-                      ${(round.raised / 1000000).toFixed(2)}M / $
-                      {(round.target / 1000000).toFixed(2)}M
+                      {formatCompactCurrency(round.raised)} / {formatCompactCurrency(round.target)}
                     </span>
                   </div>
-                  <Progress value={progress} className="h-3" />
+                  <Progress value={calculatePercentage(round.raised, round.target)} className="h-3" />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{progress.toFixed(1)}% funded</span>
+                    <span>{calculatePercentage(round.raised, round.target)}% funded</span>
                     <span>
-                      ${((round.target - round.raised) / 1000000).toFixed(2)}M remaining
+                      {formatCompactCurrency(round.target - round.raised)} remaining
                     </span>
                   </div>
                 </div>
