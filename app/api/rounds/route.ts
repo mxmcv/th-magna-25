@@ -6,30 +6,61 @@ import { requireAuth, requireCompanyAuth } from '@/lib/api/auth';
 import { validateRoundData, parseRequestBody } from '@/lib/api/validation';
 import { auditHelpers } from '@/lib/api/audit';
 
-// GET /api/rounds - List rounds (companies see their own, investors see all active)
+// GET /api/rounds - List rounds (companies see their own, investors see invited rounds)
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);
 
-    // Companies see only their rounds, investors see all active rounds
-    const whereClause = session.userType === 'company'
-      ? { companyId: session.userId }
-      : { status: 'ACTIVE' }; // Investors only see active rounds
+    let rounds;
 
-    const rounds = await prisma.round.findMany({
-      where: whereClause,
-      include: {
-        _count: {
-          select: {
-            contributions: true,
-            invitations: true,
+    if (session.userType === 'company') {
+      // Companies see only their rounds
+      rounds = await prisma.round.findMany({
+        where: { companyId: session.userId },
+        include: {
+          _count: {
+            select: {
+              contributions: true,
+              invitations: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } else {
+      // Investors only see rounds they have invitations for
+      const invitations = await prisma.invitation.findMany({
+        where: {
+          investorId: session.userId,
+          status: { in: ['SENT', 'ACCEPTED', 'VIEWED'] },
+        },
+        select: {
+          roundId: true,
+        },
+      });
+
+      const roundIds = invitations.map(inv => inv.roundId);
+
+      rounds = await prisma.round.findMany({
+        where: {
+          id: { in: roundIds },
+          status: { in: ['ACTIVE', 'CLOSED', 'COMPLETED'] }, // Show active and closed rounds
+        },
+        include: {
+          _count: {
+            select: {
+              contributions: true,
+              invitations: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    }
 
     // Calculate participants for each round
     const roundsWithStats = await Promise.all(

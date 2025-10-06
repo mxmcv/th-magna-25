@@ -46,6 +46,7 @@ model Investor {
   id            String         @id @default(uuid())
   email         String         @unique
   name          String
+  password      String?
   walletAddress String?        @unique
   joinedDate    DateTime       @default(now())
   status        InvestorStatus @default(ACTIVE)
@@ -83,6 +84,8 @@ model Invitation {
   id          String           @id @default(uuid())
   roundId     String
   investorId  String
+  token       String           @unique
+  expiresAt   DateTime
   status      InvitationStatus @default(SENT)
   sentAt      DateTime         @default(now())
   respondedAt DateTime?
@@ -93,6 +96,7 @@ model Invitation {
 
   @@unique([roundId, investorId])
   @@index([status])
+  @@index([token])
 }
 
 model AuditLog {

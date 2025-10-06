@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [companyEmail, setCompanyEmail] = useState('');
   const [companyPassword, setCompanyPassword] = useState('');
   const [investorEmail, setInvestorEmail] = useState('');
+  const [investorPassword, setInvestorPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
@@ -41,11 +42,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // For investors, we use email as login (simplified for demo)
-      await login(investorEmail, investorEmail, 'investor');
+      await login(investorEmail, investorPassword, 'investor');
       router.push('/investor');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please check your email.');
+      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -162,9 +162,18 @@ export default function LoginPage() {
                       onChange={(e) => setInvestorEmail(e.target.value)}
                       required
                     />
-                    <p className="text-xs text-muted-foreground">
-                      For demo, use any investor email from the seed data
-                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="investor-password">Password</Label>
+                    <Input
+                      id="investor-password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={investorPassword}
+                      onChange={(e) => setInvestorPassword(e.target.value)}
+                      required
+                    />
                   </div>
 
                   <Button type="submit" className="w-full" disabled={loading}>
@@ -172,10 +181,8 @@ export default function LoginPage() {
                   </Button>
 
                   <div className="text-center text-sm">
-                    <p className="text-muted-foreground">
-                      Demo emails:<br />
-                      john.smith@example.com<br />
-                      sarah.johnson@example.com
+                    <p className="text-muted-foreground text-xs">
+                      Don't have an account? You'll receive an invitation link from your company.
                     </p>
                   </div>
                 </form>

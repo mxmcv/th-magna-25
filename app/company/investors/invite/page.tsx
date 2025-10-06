@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -14,18 +13,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Mail, UserPlus, Send, X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Mail, UserPlus, Link as LinkIcon, X, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { rounds as roundsAPI, invitations as invitationsAPI, investors as investorsAPI } from "@/lib/api-client";
+import { rounds as roundsAPI, investors as investorsAPI } from "@/lib/api-client";
 
 export default function InviteInvestorsPage() {
-  const [inviteType, setInviteType] = useState<"single" | "bulk">("single");
-  const [emails, setEmails] = useState<string[]>([]);
-  const [currentEmail, setCurrentEmail] = useState("");
   const [selectedRounds, setSelectedRounds] = useState<string[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [invitationLink, setInvitationLink] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [investorInfo, setInvestorInfo] = useState<any>(null);
 
   useEffect(() => {
     async function loadRounds() {
@@ -41,53 +49,32 @@ export default function InviteInvestorsPage() {
     loadRounds();
   }, []);
 
-  const handleAddEmail = () => {
-    if (currentEmail && currentEmail.includes("@")) {
-      setEmails([...emails, currentEmail]);
-      setCurrentEmail("");
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(invitationLink);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
     }
   };
-
-  const handleRemoveEmail = (index: number) => {
-    setEmails(emails.filter((_, i) => i !== index));
-  };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Save form reference before async operations
     const form = e.currentTarget as HTMLFormElement;
+    const formData = new FormData(form);
+    const email = formData.get('email') as string;
+    const name = formData.get('name') as string;
+    const walletAddress = formData.get('wallet') as string;
     
-    // For single mode, get data from form
-    let emailsToInvite = emails;
-    if (inviteType === "single") {
-      const formData = new FormData(form);
-      const singleEmail = formData.get('email') as string;
-      const singleName = formData.get('name') as string;
-      
-      if (!singleEmail) {
-        alert('Please enter an email address');
-        return;
-      }
-      
-      emailsToInvite = [singleEmail];
-      
-      // Create single investor with name
-      try {
-        await investorsAPI.create({ 
-          email: singleEmail, 
-          name: singleName || singleEmail.split('@')[0],
-          walletAddress: (formData.get('wallet') as string) || undefined
-        }).catch(() => null); // Ignore if already exists
-      } catch (err) {
-        // Continue even if creation fails
-      }
+    if (!email) {
+      alert('Please enter an email address');
+      return;
     }
     
-    if (emailsToInvite.length === 0) {
-      alert('Please add at least one email address');
+    if (!name) {
+      alert('Please enter a name');
       return;
     }
     
@@ -99,41 +86,52 @@ export default function InviteInvestorsPage() {
     setIsSubmitting(true);
 
     try {
-      // For bulk mode, create investors if they don't exist
-      if (inviteType === "bulk") {
-        const investorPromises = emailsToInvite.map(email =>
-          investorsAPI.create({ 
-            email, 
-            name: email.split('@')[0]
-          }).catch(() => null)
-        );
-        await Promise.all(investorPromises);
+      // Create or get investor
+      let investor;
+      try {
+        investor = await investorsAPI.create({ 
+          email, 
+          name,
+          walletAddress: walletAddress || undefined
+        });
+      } catch (err: any) {
+        // If investor already exists, fetch them
+        const allInvestors = await investorsAPI.list();
+        investor = allInvestors.find((inv: any) => inv.email === email);
+        if (!investor) {
+          throw new Error('Failed to create or find investor');
+        }
       }
 
-      // Get all investors to map emails to IDs
-      const allInvestors = await investorsAPI.list();
-      const investorIds = emailsToInvite.map(email => {
-        const investor = allInvestors.find((inv: any) => inv.email === email);
-        return investor?.id;
-      }).filter(Boolean);
+      // Create invitations for selected rounds
+      const response = await fetch('/api/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          investorId: investor.id,
+          roundIds: selectedRounds,
+        }),
+      });
 
-      // Send invitations for each round
-      for (const roundId of selectedRounds) {
-        await invitationsAPI.send(roundId, investorIds);
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to create invitations');
       }
 
-      alert(`Successfully sent ${emailsToInvite.length} invitations for ${selectedRounds.length} round(s)!`);
+      // Get the first invitation link (all have same investor, just different rounds)
+      const firstInvitation = result.data.invitations[0];
+      setInvitationLink(firstInvitation.invitationLink);
+      setInvestorInfo(result.data.investor);
+      setShowInviteDialog(true);
       
       // Reset form
-      if (inviteType === "single") {
-        form.reset();
-      } else {
-        setEmails([]);
-      }
+      form.reset();
       setSelectedRounds([]);
-    } catch (error) {
-      console.error('Failed to send invitations:', error);
-      alert('Some invitations failed to send. Please try again.');
+    } catch (error: any) {
+      console.error('Failed to create invitation:', error);
+      alert(error.message || 'Failed to create invitation. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -149,64 +147,14 @@ export default function InviteInvestorsPage() {
             Back to Investors
           </Button>
         </Link>
-        <h1 className="text-2xl md:text-3xl font-bold mb-2">Invite Investors</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">Invite Investor</h1>
         <p className="text-sm md:text-base text-muted-foreground">
-          Send invitations to participate in your fundraising rounds
+          Generate a unique invitation link for an investor to join your fundraising rounds
         </p>
       </div>
 
       <div className="max-w-3xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Invitation Type */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle>Invitation Type</CardTitle>
-                  <CardDescription>Choose how you want to send invitations</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setInviteType("single")}
-                  className={`p-4 border-2 rounded-lg transition-all ${
-                    inviteType === "single"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <UserPlus className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <div className="font-semibold">Single Invite</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Invite one investor at a time
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setInviteType("bulk")}
-                  className={`p-4 border-2 rounded-lg transition-all ${
-                    inviteType === "bulk"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <Send className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <div className="font-semibold">Bulk Invite</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Invite multiple investors
-                  </div>
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Investor Details */}
           <Card>
             <CardHeader>
@@ -217,109 +165,51 @@ export default function InviteInvestorsPage() {
                 <div>
                   <CardTitle>Investor Details</CardTitle>
                   <CardDescription>
-                    {inviteType === "single"
-                      ? "Enter investor information"
-                      : "Add multiple email addresses"}
+                    Enter investor information
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {inviteType === "single" ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">
-                      Full Name <span className="text-destructive">*</span>
-                    </Label>
-                    <Input 
-                      id="name" 
-                      name="name"
-                      placeholder="John Smith" 
-                      required 
-                      className="h-11" 
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  Full Name <span className="text-destructive">*</span>
+                </Label>
+                <Input 
+                  id="name" 
+                  name="name"
+                  placeholder="John Smith" 
+                  required 
+                  className="h-11" 
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email">
-                      Email Address <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      required
-                      className="h-11"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">
+                  Email Address <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  required
+                  className="h-11"
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="wallet">Wallet Address (Optional)</Label>
-                    <Input
-                      id="wallet"
-                      name="wallet"
-                      placeholder="0x..."
-                      className="h-11 font-mono text-sm"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Can be added later by the investor
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="email-input">Email Addresses</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="email-input"
-                        type="email"
-                        placeholder="Enter email and press Add"
-                        value={currentEmail}
-                        onChange={(e) => setCurrentEmail(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddEmail();
-                          }
-                        }}
-                        className="h-11"
-                      />
-                      <Button type="button" onClick={handleAddEmail} className="gap-2">
-                        <UserPlus className="w-4 h-4" />
-                        Add
-                      </Button>
-                    </div>
-                  </div>
-
-                  {emails.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">
-                        Added Emails ({emails.length})
-                      </Label>
-                      <div className="border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
-                        {emails.map((email, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between p-2 bg-muted/30 rounded"
-                          >
-                            <span className="text-sm">{email}</span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveEmail(index)}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="wallet">Wallet Address (Optional)</Label>
+                <Input
+                  id="wallet"
+                  name="wallet"
+                  placeholder="0x..."
+                  className="h-11 font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Can be added later by the investor
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -328,12 +218,12 @@ export default function InviteInvestorsPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Send className="w-4 h-4 text-primary" />
+                  <LinkIcon className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle>Select Round</CardTitle>
+                  <CardTitle>Select Rounds</CardTitle>
                   <CardDescription>
-                    Choose which fundraising round to invite investors to
+                    Choose which fundraising rounds to give access to
                   </CardDescription>
                 </div>
               </div>
@@ -341,10 +231,9 @@ export default function InviteInvestorsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="round">
-                  Fundraising Round <span className="text-destructive">*</span>
+                  Fundraising Rounds <span className="text-destructive">*</span>
                 </Label>
                 <Select 
-                  required
                   onValueChange={(value) => {
                     if (value && !selectedRounds.includes(value)) {
                       setSelectedRounds([...selectedRounds, value]);
@@ -352,21 +241,24 @@ export default function InviteInvestorsPage() {
                   }}
                 >
                   <SelectTrigger className="h-11">
-                    <SelectValue placeholder="Select a round" />
+                    <SelectValue placeholder="Select rounds" />
                   </SelectTrigger>
                   <SelectContent>
                     {rounds
-                      .filter((r) => r.status === "ACTIVE")
+                      .filter((r) => r.status === "ACTIVE" || r.status === "DRAFT")
                       .map((round) => (
                         <SelectItem key={round.id} value={round.id}>
                           <div className="flex items-center gap-2">
                             {round.name}
-                            <Badge className="bg-primary/10 text-primary text-xs">Active</Badge>
+                            <Badge className="bg-primary/10 text-primary text-xs">{round.status}</Badge>
                           </div>
                         </SelectItem>
                       ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  The investor will only be able to view and contribute to the selected rounds
+                </p>
               </div>
 
               {/* Show selected rounds */}
@@ -398,46 +290,6 @@ export default function InviteInvestorsPage() {
                   </div>
                 </div>
               )}
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="message">Personal Message (Optional)</Label>
-                <Textarea
-                  id="message"
-                  placeholder="Add a personal message to your invitation..."
-                  rows={4}
-                  className="resize-none"
-                />
-                <p className="text-xs text-muted-foreground">
-                  This message will be included in the invitation email
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Preview */}
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader>
-              <CardTitle className="text-base">Invitation Preview</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Recipients:</span>
-                <span className="font-medium">
-                  {inviteType === "single" ? "1 investor" : `${emails.length} investors`}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Round:</span>
-                <span className="font-medium">Selected round</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Invitation Type:</span>
-                <span className="font-medium">
-                  {inviteType === "single" ? "Individual" : "Bulk"}
-                </span>
-              </div>
             </CardContent>
           </Card>
 
@@ -451,17 +303,93 @@ export default function InviteInvestorsPage() {
             <Button 
               type="submit" 
               className="flex-1 h-11 gap-2" 
-              disabled={
-                isSubmitting || 
-                selectedRounds.length === 0 || 
-                (inviteType === "bulk" && emails.length === 0)
-              }
+              disabled={isSubmitting || selectedRounds.length === 0}
             >
-              <Send className="w-4 h-4" />
-              {isSubmitting ? 'Sending...' : `Send ${inviteType === "bulk" && emails.length > 0 ? `${emails.length} ` : ""}Invitation${inviteType === "bulk" && emails.length !== 1 ? "s" : ""}`}
+              <LinkIcon className="w-4 h-4" />
+              {isSubmitting ? 'Generating...' : 'Generate Invitation Link'}
             </Button>
           </div>
         </form>
+
+        {/* Invitation Link Dialog */}
+        <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <LinkIcon className="w-5 h-5 text-primary" />
+                </div>
+                <span>Invitation Link Generated</span>
+              </DialogTitle>
+              <DialogDescription>
+                Share this unique link with {investorInfo?.name || 'the investor'}. It will expire in 7 days.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Investor Info */}
+              <div className="p-4 bg-muted/30 rounded-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Investor:</span>
+                  <span className="font-medium">{investorInfo?.name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Email:</span>
+                  <span className="font-medium text-sm">{investorInfo?.email}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Rounds:</span>
+                  <span className="font-medium">{selectedRounds.length}</span>
+                </div>
+              </div>
+
+              {/* Invitation Link */}
+              <div className="space-y-2">
+                <Label>Invitation Link</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={invitationLink}
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyLink}
+                    className="shrink-0"
+                  >
+                    {copiedLink ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+                {copiedLink && (
+                  <p className="text-xs text-green-500">Link copied to clipboard!</p>
+                )}
+              </div>
+
+              {/* Instructions */}
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <h4 className="font-medium mb-2">Next Steps:</h4>
+                <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                  <li>Copy the invitation link above</li>
+                  <li>Email it to {investorInfo?.email}</li>
+                  <li>The investor will use it to create their account</li>
+                  <li>They'll set a password and gain access to their invited rounds</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={() => setShowInviteDialog(false)}>
+                Done
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

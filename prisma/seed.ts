@@ -3,6 +3,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../lib/api/auth';
+import { generateInvitationToken, getInvitationExpiry } from '../lib/invitation-utils';
 
 const prisma = new PrismaClient();
 
@@ -20,12 +21,15 @@ async function main() {
   });
   console.log('✅ Created demo company:', demoCompany.email);
 
-  // Create demo investors
+  // Create demo investors with passwords (for those who have accepted invitations)
+  const demoPassword = await hashPassword('investor123');
+  
   const investors = await Promise.all([
     prisma.investor.create({
       data: {
         email: 'john.smith@example.com',
         name: 'John Smith',
+        password: demoPassword,
         walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
         status: 'ACTIVE',
       },
@@ -34,6 +38,7 @@ async function main() {
       data: {
         email: 'sarah.johnson@example.com',
         name: 'Sarah Johnson',
+        password: demoPassword,
         walletAddress: '0x8ba1f109551bD432803012645Ac136ddd64DBA72',
         status: 'ACTIVE',
       },
@@ -42,6 +47,7 @@ async function main() {
       data: {
         email: 'mike.chen@example.com',
         name: 'Mike Chen',
+        password: demoPassword,
         status: 'ACTIVE',
       },
     }),
@@ -49,6 +55,7 @@ async function main() {
       data: {
         email: 'emma.davis@example.com',
         name: 'Emma Davis',
+        password: null, // No password yet - waiting for invitation acceptance
         status: 'INVITED',
       },
     }),
@@ -242,12 +249,14 @@ async function main() {
   ]);
   console.log('✅ Created contributions for Pre-Seed Round');
 
-  // Create invitations
+  // Create invitations with tokens
   await Promise.all([
     prisma.invitation.create({
       data: {
         roundId: seedRound.id,
         investorId: investors[0].id,
+        token: generateInvitationToken(),
+        expiresAt: getInvitationExpiry(),
         status: 'ACCEPTED',
         respondedAt: new Date('2025-09-14'),
       },
@@ -256,6 +265,8 @@ async function main() {
       data: {
         roundId: seedRound.id,
         investorId: investors[1].id,
+        token: generateInvitationToken(),
+        expiresAt: getInvitationExpiry(),
         status: 'ACCEPTED',
         respondedAt: new Date('2025-09-17'),
       },
@@ -264,6 +275,8 @@ async function main() {
       data: {
         roundId: seedRound.id,
         investorId: investors[2].id,
+        token: generateInvitationToken(),
+        expiresAt: getInvitationExpiry(),
         status: 'ACCEPTED',
         respondedAt: new Date('2025-09-19'),
       },
@@ -272,6 +285,8 @@ async function main() {
       data: {
         roundId: seriesARound.id,
         investorId: investors[3].id,
+        token: generateInvitationToken(),
+        expiresAt: getInvitationExpiry(),
         status: 'SENT',
       },
     }),
@@ -282,8 +297,11 @@ async function main() {
   console.log('\n📝 Demo Credentials:');
   console.log('   Company Email: demo@company.com');
   console.log('   Password: demo123');
-  console.log('\n   Investor Emails (for login):');
-  investors.forEach((inv) => console.log(`   - ${inv.email}`));
+  console.log('\n   Investor Logins (email / password):');
+  console.log('   - john.smith@example.com / investor123');
+  console.log('   - sarah.johnson@example.com / investor123');
+  console.log('   - mike.chen@example.com / investor123');
+  console.log('   - emma.davis@example.com (no password - needs invitation)');
 }
 
 main()
