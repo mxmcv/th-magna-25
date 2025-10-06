@@ -55,11 +55,16 @@ export async function POST(request: NextRequest) {
           return null; // Skip if already invited
         }
 
+        // Set expiration to 7 days from now
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
         const invitation = await prisma.invitation.create({
           data: {
             roundId: data.roundId,
             investorId,
             status: 'SENT',
+            expiresAt,
           },
           include: {
             investor: {

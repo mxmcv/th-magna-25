@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Mail, UserPlus, Send, X, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Mail, UserPlus, Send, X, AlertCircle, CheckCircle2, Copy, Check, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { rounds as roundsAPI, invitations as invitationsAPI, investors as investorsAPI } from "@/lib/api-client";
@@ -28,6 +28,8 @@ export default function InviteInvestorsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [generatedInvites, setGeneratedInvites] = useState<any[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadRounds() {
@@ -72,6 +74,27 @@ export default function InviteInvestorsPage() {
 
   const handleRemoveEmail = (index: number) => {
     setEmails(emails.filter((_, i) => i !== index));
+  };
+
+  const handleCopyLink = async (token: string, index: number) => {
+    const baseUrl = 'https://takehome-magna-25-git-invite-service-michaels-projects-0a8c9a7f.vercel.app';
+    const inviteUrl = `${baseUrl}/investor/onboard/${token}`;
+    
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleReset = () => {
+    setEmails([]);
+    setSelectedRounds([]);
+    setGeneratedInvites([]);
+    setSuccess(null);
+    setError(null);
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,21 +166,21 @@ export default function InviteInvestorsPage() {
         })
         .filter((id): id is string => typeof id === 'string');
 
-      // Send invitations for each round
+      // Send invitations for each round and collect the results
+      const allInvitations = [];
       for (const roundId of selectedRounds) {
-        await invitationsAPI.send(roundId, investorIds);
+        const result: any = await invitationsAPI.send(roundId, investorIds);
+        if (result?.invitations) {
+          allInvitations.push(...result.invitations);
+        }
       }
 
-      setSuccess(`Successfully sent ${emailsToInvite.length} invitation(s) for ${selectedRounds.length} round(s)!`);
-      setTimeout(() => setSuccess(null), 5000);
+      // Store generated invitations for display
+      setGeneratedInvites(allInvitations);
+      setSuccess(`Successfully created ${allInvitations.length} invitation link(s)!`);
       
-      // Reset form
-      if (inviteType === "single") {
-        form.reset();
-      } else {
-        setEmails([]);
-      }
-      setSelectedRounds([]);
+      // Don't reset form immediately - let user see the links
+      // They can manually start a new invite
     } catch (err) {
       console.error('Failed to send invitations:', err);
       const message = err instanceof Error ? err.message : 'Some invitations failed to send. Please try again.';
@@ -507,8 +530,78 @@ export default function InviteInvestorsPage() {
             </Button>
           </div>
         </form>
+
+        {/* Generated Invitation Links */}
+        {generatedInvites.length > 0 && (
+          <Card className="border-green-500/20 bg-green-500/5 mt-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    Generated Invitation Links
+                  </CardTitle>
+                  <CardDescription>
+                    Copy these links and send them to your investors
+                  </CardDescription>
+                </div>
+                <Button onClick={handleReset} variant="outline" size="sm">
+                  Create New Invites
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {generatedInvites.map((invite: any, index: number) => {
+                  const baseUrl = 'https://takehome-magna-25-git-invite-service-michaels-projects-0a8c9a7f.vercel.app';
+                  const inviteUrl = `${baseUrl}/investor/onboard/${invite.token}`;
+                  
+                  return (
+                    <div
+                      key={invite.id}
+                      className="p-4 border rounded-lg bg-background space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{invite.investor.name}</div>
+                          <div className="text-sm text-muted-foreground">{invite.investor.email}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Round: {invite.round.name}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={copiedIndex === index ? "default" : "outline"}
+                          onClick={() => handleCopyLink(invite.token, index)}
+                          className="gap-2 shrink-0"
+                        >
+                          {copiedIndex === index ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4" />
+                              Copy Link
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <div className="p-2 bg-muted rounded font-mono text-xs break-all">
+                        {inviteUrl}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-4">
+                💡 Links expire in 7 days. Investors will create their password when they click the link.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
 }
-

@@ -20,29 +20,27 @@ async function main() {
   });
   console.log('✅ Created demo company:', demoCompany.email);
 
-  // Create demo investors
+  // Create demo investors (without passwords - they'll set them via invite links)
   const investors = await Promise.all([
     prisma.investor.create({
       data: {
         email: 'john.smith@example.com',
         name: 'John Smith',
-        walletAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb',
-        status: 'ACTIVE',
+        status: 'INVITED',
       },
     }),
     prisma.investor.create({
       data: {
         email: 'sarah.johnson@example.com',
         name: 'Sarah Johnson',
-        walletAddress: '0x8ba1f109551bD432803012645Ac136ddd64DBA72',
-        status: 'ACTIVE',
+        status: 'INVITED',
       },
     }),
     prisma.investor.create({
       data: {
         email: 'mike.chen@example.com',
         name: 'Mike Chen',
-        status: 'ACTIVE',
+        status: 'INVITED',
       },
     }),
     prisma.investor.create({
@@ -53,7 +51,7 @@ async function main() {
       },
     }),
   ]);
-  console.log(`✅ Created ${investors.length} demo investors`);
+  console.log(`✅ Created ${investors.length} demo investors (awaiting invite links)`);
 
   // Create demo rounds
   const seedRound = await prisma.round.create({
@@ -282,8 +280,13 @@ async function main() {
   console.log('\n📝 Demo Credentials:');
   console.log('   Company Email: demo@company.com');
   console.log('   Password: demo123');
-  console.log('\n   Investor Emails (for login):');
-  investors.forEach((inv) => console.log(`   - ${inv.email}`));
+  console.log('\n   💡 To onboard investors:');
+  console.log('   1. Login as company');
+  console.log('   2. Go to Investors → Invite Investors');
+  console.log('   3. Create invite links for these investors:');
+  investors.forEach((inv) => console.log(`      - ${inv.name} (${inv.email})`));
+  console.log('   4. Copy the generated links');
+  console.log('   5. Use the links to set up investor passwords');
 }
 
 main()

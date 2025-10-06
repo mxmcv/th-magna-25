@@ -238,7 +238,7 @@ export const investors = {
 
 export const invitations = {
   send: (roundId: string, investorIds: string[]) =>
-    apiClient.sendInvitations(roundId, investorIds),
+    apiClient.sendInvitations(roundId, investorIds) as Promise<any>,
 };
 
 export const contributions = {

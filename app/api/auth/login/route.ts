@@ -49,12 +49,30 @@ export async function POST(request: NextRequest) {
         userType: 'company',
       };
     } else {
-      // For investors, we'll use email as password for simplicity in this demo
+      // Investor login
       user = await prisma.investor.findUnique({
         where: { email },
       });
 
       if (!user) {
+        throw new ApiError(
+          'Invalid email or password',
+          401,
+          ErrorCodes.INVALID_CREDENTIALS
+        );
+      }
+
+      // Check if investor has set up their account with a password
+      if (!user.password) {
+        throw new ApiError(
+          'Please use your invitation link to set up your account first',
+          401,
+          ErrorCodes.INVALID_CREDENTIALS
+        );
+      }
+
+      // Verify password
+      if (!(await verifyPassword(data.password, user.password))) {
         throw new ApiError(
           'Invalid email or password',
           401,
