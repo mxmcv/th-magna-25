@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Target, Calendar, TrendingUp, Info } from "lucide-react";
+import { Target, Calendar, TrendingUp, Info, CheckCircle, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,56 +24,89 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { rounds as roundsAPI, contributions as contributionsAPI } from "@/lib/api-client";
+import { GridViewSkeleton } from "@/components/skeletons";
 
 export default function AvailableRoundsPage() {
   const [contributionAmount, setContributionAmount] = useState("");
   const [selectedToken, setSelectedToken] = useState("USDC");
   const [selectedRound, setSelectedRound] = useState<string | null>(null);
+  const [rounds, setRounds] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dialogCloseRef = useRef<HTMLButtonElement>(null);
 
-  const rounds = [
-    {
-      id: "1",
-      name: "Seed Round",
-      company: "Demo Company",
-      description:
-        "Early-stage funding to develop our DeFi platform and expand the team. Join us in building the future of decentralized finance.",
-      target: 5000000,
-      raised: 3200000,
-      minContribution: 10000,
-      maxContribution: 100000,
-      participants: 28,
-      acceptedTokens: ["USDC", "USDT"],
-      status: "active",
-      startDate: "2025-09-01",
-      endDate: "2025-11-30",
-      myContribution: 100000,
-    },
-    {
-      id: "2",
-      name: "Series A",
-      company: "Demo Company",
-      description:
-        "Growth capital to scale operations, expand globally, and launch new product features. Strategic round for long-term partners.",
-      target: 10000000,
-      raised: 1000000,
-      minContribution: 50000,
-      maxContribution: 500000,
-      participants: 5,
-      acceptedTokens: ["USDC", "USDT"],
-      status: "active",
-      startDate: "2025-10-01",
-      endDate: "2025-12-31",
-      myContribution: 50000,
-    },
-  ];
+  useEffect(() => {
+    loadRounds();
+  }, []);
 
-  const handleContribute = () => {
-    console.log("Contributing:", { selectedRound, contributionAmount, selectedToken });
-    // Will implement API call later
-    setContributionAmount("");
-    setSelectedRound(null);
+  async function loadRounds() {
+    try {
+      const [roundsData, contributionsData] = await Promise.all([
+        roundsAPI.list(),
+        contributionsAPI.list(),
+      ]);
+      
+      // Calculate myContribution for each round
+      const contributionsByRound = new Map();
+      contributionsData.forEach((c: any) => {
+        const existing = contributionsByRound.get(c.roundId) || 0;
+        contributionsByRound.set(c.roundId, existing + c.amount);
+      });
+      
+      // Add myContribution to each round
+      const roundsWithContributions = roundsData.map((round: any) => ({
+        ...round,
+        myContribution: contributionsByRound.get(round.id) || 0,
+      }));
+      
+      setRounds(roundsWithContributions);
+    } catch (error) {
+      console.error('Failed to load rounds:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) return <GridViewSkeleton />;
+
+  const handleContribute = async () => {
+    if (!selectedRound || !contributionAmount) return;
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      await contributionsAPI.create({
+        roundId: selectedRound,
+        amount: parseFloat(contributionAmount),
+        token: selectedToken,
+      });
+      
+      setSuccessMessage('Contribution successful!');
+      setContributionAmount("");
+      setSelectedRound(null);
+      
+      // Close dialog
+      dialogCloseRef.current?.click();
+      
+      // Reload rounds to show updated data
+      await loadRounds();
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(""), 5000);
+    } catch (error) {
+      console.error('Failed to contribute:', error);
+      setErrorMessage('Failed to create contribution. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const displayRounds = rounds;
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -84,12 +117,40 @@ export default function AvailableRoundsPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:gap-6">
-        {rounds.map((round) => {
-          const progress = (round.raised / round.target) * 100;
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-green-500 font-medium">{successMessage}</p>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-destructive font-medium">{errorMessage}</p>
+        </div>
+      )}
+
+      {displayRounds.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <p className="text-muted-foreground mb-4">
+              No active fundraising rounds available at the moment.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Check back later for new investment opportunities.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:gap-6">
+          {displayRounds.map((round: any) => {
+          const progress = round.target > 0 ? (round.raised / round.target) * 100 : 0;
           const hasInvested = round.myContribution > 0;
           const canContributeMore = round.myContribution < round.maxContribution;
-          const remainingAllocation = round.maxContribution - round.myContribution;
+          const remainingAllocation = round.maxContribution - (round.myContribution || 0);
 
           return (
             <Card key={round.id}>
@@ -143,7 +204,7 @@ export default function AvailableRoundsPage() {
                       Max Investment
                     </div>
                     <div className="text-lg font-bold">
-                      ${(round.maxContribution / 1000).toFixed(0)}K
+                      ${(round.maxContribution / 1000).toFixed(1)}K
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -152,7 +213,9 @@ export default function AvailableRoundsPage() {
                       End Date
                     </div>
                     <div className="text-sm font-semibold">
-                      {new Date(round.endDate).toLocaleDateString()}
+                      {round.endDate 
+                        ? new Date(round.endDate).toLocaleDateString()
+                        : 'Not set'}
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -228,10 +291,10 @@ export default function AvailableRoundsPage() {
                           onChange={(e) => setContributionAmount(e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Min: ${(round.minContribution / 1000).toFixed(0)}K • Max: $
+                          Min: ${(round.minContribution / 1000).toFixed(1)}K • Max: $
                           {hasInvested
-                            ? (remainingAllocation / 1000).toFixed(0)
-                            : (round.maxContribution / 1000).toFixed(0)}
+                            ? (remainingAllocation / 1000).toFixed(1)
+                            : (round.maxContribution / 1000).toFixed(1)}
                           K
                         </p>
                       </div>
@@ -251,11 +314,19 @@ export default function AvailableRoundsPage() {
                         </Select>
                       </div>
                     </div>
+                    {errorMessage && (
+                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2 mt-4">
+                        <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
+                        <p className="text-sm text-destructive">{errorMessage}</p>
+                      </div>
+                    )}
                     <DialogFooter>
                       <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
+                        <Button ref={dialogCloseRef} variant="outline">Cancel</Button>
                       </DialogClose>
-                      <Button onClick={handleContribute}>Confirm Contribution</Button>
+                      <Button onClick={handleContribute} disabled={isSubmitting}>
+                        {isSubmitting ? 'Processing...' : 'Confirm Contribution'}
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                   </Dialog>
@@ -265,7 +336,8 @@ export default function AvailableRoundsPage() {
             </Card>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,54 +12,36 @@ import {
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { contributions as contributionsAPI } from "@/lib/api-client";
+import { TableViewSkeleton } from "@/components/skeletons";
 
 export default function ContributionHistoryPage() {
-  // Mock data
-  const contributions = [
-    {
-      id: "1",
-      roundName: "Seed Round",
-      company: "Demo Company",
-      amount: 100000,
-      token: "USDC",
-      date: "2025-09-20",
-      status: "confirmed",
-      transactionHash: "0x1234...5678",
-      roundTarget: 5000000,
-      roundRaised: 3200000,
-    },
-    {
-      id: "2",
-      roundName: "Series A",
-      company: "Demo Company",
-      amount: 50000,
-      token: "USDT",
-      date: "2025-10-03",
-      status: "confirmed",
-      transactionHash: "0xabcd...efgh",
-      roundTarget: 10000000,
-      roundRaised: 1000000,
-    },
-    {
-      id: "3",
-      roundName: "Pre-Seed",
-      company: "Demo Company",
-      amount: 25000,
-      token: "USDC",
-      date: "2025-06-25",
-      status: "confirmed",
-      transactionHash: "0x9876...5432",
-      roundTarget: 1000000,
-      roundRaised: 1000000,
-    },
-  ];
+  const [contributions, setContributions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const data = await contributionsAPI.list();
+        setContributions(data);
+      } catch (error) {
+        console.error('Failed to load history:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadHistory();
+  }, []);
+
+  if (loading) return <TableViewSkeleton />;
 
   const totalInvested = contributions.reduce((sum, c) => sum + c.amount, 0);
-  const activeInvestments = contributions.filter((c) => c.roundRaised < c.roundTarget).length;
-  const completedInvestments = contributions.filter((c) => c.roundRaised >= c.roundTarget).length;
+  const activeInvestments = contributions.filter((c) => c.round?.status === 'ACTIVE').length;
+  const completedInvestments = contributions.filter((c) => c.round?.status === 'CLOSED').length;
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "confirmed":
         return (
           <Badge className="bg-primary/10 text-primary gap-1">
@@ -95,9 +79,11 @@ export default function ContributionHistoryPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">${(totalInvested / 1000).toFixed(0)}K</div>
+            <div className="text-3xl font-bold">
+              {totalInvested > 0 ? `$${(totalInvested / 1000).toFixed(0)}K` : '$0'}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Across {contributions.length} contributions
+              Across {contributions.length} contribution{contributions.length !== 1 ? 's' : ''}
             </p>
           </CardContent>
         </Card>
@@ -133,8 +119,9 @@ export default function ContributionHistoryPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           {contributions.map((contribution) => {
-            const progress = (contribution.roundRaised / contribution.roundTarget) * 100;
-            const isCompleted = progress >= 100;
+            const round = contribution.round;
+            const progress = round && round.target > 0 ? (round.raised / round.target) * 100 : 0;
+            const isCompleted = round?.status === 'CLOSED';
 
             return (
               <div
@@ -144,19 +131,21 @@ export default function ContributionHistoryPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-lg">{contribution.roundName}</h3>
+                      <h3 className="font-semibold text-lg">{round?.name || 'Unknown Round'}</h3>
                       <Badge className={isCompleted ? "bg-green-500/10 text-green-500" : "bg-primary/10 text-primary"}>
                         {isCompleted ? "Completed" : "Active"}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">
-                      {contribution.company} • Contributed{" "}
-                      {new Date(contribution.date).toLocaleDateString()}
+                      Demo Company • Contributed{" "}
+                      {contribution.contributedAt 
+                        ? new Date(contribution.contributedAt).toLocaleDateString()
+                        : 'Unknown date'}
                     </p>
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold">
-                      ${(contribution.amount / 1000).toFixed(0)}K
+                      {contribution.amount > 0 ? `$${(contribution.amount / 1000).toFixed(0)}K` : '$0'}
                     </div>
                     <div className="text-xs text-muted-foreground">{contribution.token}</div>
                   </div>
@@ -169,8 +158,8 @@ export default function ContributionHistoryPage() {
                       Round Progress
                     </span>
                     <span className="font-medium">
-                      ${(contribution.roundRaised / 1000000).toFixed(2)}M / $
-                      {(contribution.roundTarget / 1000000).toFixed(2)}M
+                      ${((round?.raised || 0) / 1000000).toFixed(2)}M / $
+                      {((round?.target || 0) / 1000000).toFixed(2)}M
                     </span>
                   </div>
                   <Progress value={progress} className="h-2" />
@@ -181,10 +170,12 @@ export default function ContributionHistoryPage() {
 
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <div className="flex items-center gap-2">
-                    {getStatusBadge(contribution.status)}
-                    <span className="text-xs text-muted-foreground">
-                      TX: {contribution.transactionHash}
-                    </span>
+                    {getStatusBadge(contribution.status?.toLowerCase() || 'pending')}
+                    {contribution.transactionHash && (
+                      <span className="text-xs text-muted-foreground">
+                        TX: {contribution.transactionHash}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -214,17 +205,19 @@ export default function ContributionHistoryPage() {
             </TableHeader>
             <TableBody>
               {contributions
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .sort((a, b) => new Date(b.contributedAt || 0).getTime() - new Date(a.contributedAt || 0).getTime())
                 .map((contribution) => (
                   <TableRow key={contribution.id}>
                     <TableCell className="font-medium">
-                      {new Date(contribution.date).toLocaleDateString()}
+                      {contribution.contributedAt 
+                        ? new Date(contribution.contributedAt).toLocaleDateString() 
+                        : 'Unknown'}
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{contribution.roundName}</div>
+                        <div className="font-medium">{contribution.round?.name || 'Unknown Round'}</div>
                         <div className="text-sm text-muted-foreground">
-                          {contribution.company}
+                          Demo Company
                         </div>
                       </div>
                     </TableCell>
@@ -234,9 +227,9 @@ export default function ContributionHistoryPage() {
                     <TableCell>
                       <Badge variant="outline">{contribution.token}</Badge>
                     </TableCell>
-                    <TableCell>{getStatusBadge(contribution.status)}</TableCell>
+                    <TableCell>{getStatusBadge(contribution.status?.toLowerCase() || 'pending')}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
-                      {contribution.transactionHash}
+                      {contribution.transactionHash || 'N/A'}
                     </TableCell>
                   </TableRow>
                 ))}

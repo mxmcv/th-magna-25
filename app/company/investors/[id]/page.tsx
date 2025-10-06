@@ -24,17 +24,33 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use } from "react";
-import { mockInvestors, mockContributions, mockRounds } from "@/lib/mock-data";
+import { use, useState, useEffect } from "react";
+import { investors as investorsAPI } from "@/lib/api-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import { DetailViewSkeleton } from "@/components/skeletons";
 
 export default function InvestorDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const [investor, setInvestor] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Find the investor
-  const investor = mockInvestors.find((inv) => inv.id === id);
+  useEffect(() => {
+    async function loadInvestor() {
+      try {
+        const data = await investorsAPI.get(id);
+        setInvestor(data);
+      } catch (error) {
+        console.error('Failed to load investor:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadInvestor();
+  }, [id]);
+
+  if (loading) return <DetailViewSkeleton />;
 
   if (!investor) {
     return (
@@ -45,31 +61,41 @@ export default function InvestorDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // Get all contributions by this investor
-  const investorContributions = mockContributions.filter(
-    (c) => c.investorId === investor.id
-  );
+  const investorContributions = investor.contributions || [];
 
   // Calculate total contributed
   const totalContributed = investorContributions.reduce(
-    (sum, c) => sum + c.amount,
+    (sum: number, c: any) => sum + c.amount,
     0
   );
 
-  // Get rounds they've invested in
-  const investedRounds = mockRounds.filter((round) =>
-    investorContributions.some((c) => c.roundId === round.id)
-  );
+  // Group contributions by round
+  const roundMap = new Map();
+  investorContributions.forEach((contrib: any) => {
+    const roundId = contrib.round?.id;
+    if (!roundId) return;
+    
+    if (roundMap.has(roundId)) {
+      const existing = roundMap.get(roundId);
+      existing.total += contrib.amount;
+      existing.contributions.push(contrib);
+    } else {
+      roundMap.set(roundId, {
+        round: contrib.round,
+        total: contrib.amount,
+        contributions: [contrib],
+      });
+    }
+  });
 
-  // Get contributions per round
-  const contributionsByRound = investedRounds.map((round) => {
-    const contributions = investorContributions.filter(
-      (c) => c.roundId === round.id
-    );
-    const total = contributions.reduce((sum, c) => sum + c.amount, 0);
+  const contributionsByRound = Array.from(roundMap.values()).map((item) => {
+    const round = item.round;
+    const progress = round.target > 0 ? (item.total / round.maxContribution) * 100 : 0;
     return {
-      round,
-      contributions,
-      total,
+      round: item.round,
+      contributions: item.contributions,
+      total: item.total,
+      progress,
     };
   });
 
@@ -183,7 +209,7 @@ export default function InvestorDetailPage({ params }: { params: Promise<{ id: s
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{investedRounds.length}</div>
+            <div className="text-3xl font-bold">{contributionsByRound.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -286,11 +312,10 @@ export default function InvestorDetailPage({ params }: { params: Promise<{ id: s
               </TableHeader>
               <TableBody>
                 {investorContributions.map((contribution) => {
-                  const round = mockRounds.find((r) => r.id === contribution.roundId);
                   return (
                     <TableRow key={contribution.id}>
                       <TableCell className="font-medium">
-                        {round?.name || "Unknown"}
+                        {contribution.round?.name || "Unknown"}
                       </TableCell>
                       <TableCell className="font-semibold">
                         {formatCurrency(contribution.amount)}

@@ -1,6 +1,3 @@
-// Prisma Schema for Magna Fundraising Platform
-// Database: Neon (PostgreSQL)
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,45 +7,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================================================
-// CORE MODELS
-// ============================================================================
+model Company {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  rounds    Round[]
+
+  @@index([email])
+}
 
 model Round {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   name            String
   companyId       String
   description     String?
-  target          Float    // Target amount in USD
-  raised          Float    @default(0)
+  target          Float
+  raised          Float          @default(0)
   minContribution Float
   maxContribution Float
-  status          RoundStatus @default(DRAFT)
-  acceptedTokens  String[] // ["USDC", "USDT"]
+  status          RoundStatus    @default(DRAFT)
+  acceptedTokens  String[]
   startDate       DateTime
   endDate         DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   contributions   Contribution[]
   invitations     Invitation[]
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([companyId])
 }
 
 model Investor {
-  id            String   @id @default(uuid())
-  email         String   @unique
+  id            String         @id @default(uuid())
+  email         String         @unique
   name          String
-  walletAddress String?  @unique
-  kycStatus     KycStatus @default(PENDING)
-  kycDocuments  Json?    // Flexible JSON for various document types
-  joinedDate    DateTime @default(now())
+  walletAddress String?        @unique
+  joinedDate    DateTime       @default(now())
   status        InvestorStatus @default(ACTIVE)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   contributions Contribution[]
   invitations   Invitation[]
 
@@ -57,21 +59,20 @@ model Investor {
 }
 
 model Contribution {
-  id              String   @id @default(uuid())
+  id              String             @id @default(uuid())
   roundId         String
   investorId      String
-  amount          Float    // Amount in USD
-  token           String   // "USDC" or "USDT"
+  amount          Float
+  token           String
   status          ContributionStatus @default(PENDING)
-  transactionHash String?  @unique
+  transactionHash String?            @unique
   walletAddress   String?
-  contributedAt   DateTime @default(now())
+  contributedAt   DateTime           @default(now())
   confirmedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  round           Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  investor        Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  investor        Investor           @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  round           Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
   @@index([roundId, investorId])
   @@index([status])
@@ -79,37 +80,43 @@ model Contribution {
 }
 
 model Invitation {
-  id          String   @id @default(uuid())
+  id          String           @id @default(uuid())
   roundId     String
   investorId  String
   status      InvitationStatus @default(SENT)
-  sentAt      DateTime @default(now())
+  sentAt      DateTime         @default(now())
   respondedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  round       Round    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  investor    Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  investor    Investor         @relation(fields: [investorId], references: [id], onDelete: Cascade)
+  round       Round            @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
   @@unique([roundId, investorId])
   @@index([status])
 }
 
-// ============================================================================
-// ENUMS
-// ============================================================================
+model AuditLog {
+  id         String      @id @default(uuid())
+  entityType String
+  entityId   String
+  action     AuditAction
+  userId     String
+  userType   String
+  changes    Json?
+  metadata   Json?
+  timestamp  DateTime    @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+}
 
 enum RoundStatus {
   DRAFT
   ACTIVE
   CLOSED
   COMPLETED
-}
-
-enum KycStatus {
-  PENDING
-  VERIFIED
-  REJECTED
 }
 
 enum InvestorStatus {
@@ -131,19 +138,12 @@ enum InvitationStatus {
   DECLINED
 }
 
-// ============================================================================
-// AUDIT LOG (Optional - for advanced tracking)
-// ============================================================================
-
-model AuditLog {
-  id          String   @id @default(uuid())
-  entityType  String   // "Round", "Contribution", etc.
-  entityId    String
-  action      String   // "CREATE", "UPDATE", "DELETE"
-  userId      String   // Who performed the action
-  changes     Json?    // What changed
-  timestamp   DateTime @default(now())
-
-  @@index([entityType, entityId])
-  @@index([timestamp])
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  CONTRIBUTE
+  INVITE
+  CLOSE_ROUND
+  CONFIRM_CONTRIBUTION
 }

@@ -41,7 +41,7 @@ export function formatCompactCurrency(amount: number): string {
   }
   
   if (absAmount >= 1000) {
-    return `${CURRENCY.SYMBOL}${(amount / 1000).toFixed(0)}K`;
+    return `${CURRENCY.SYMBOL}${(amount / 1000).toFixed(1)}K`;
   }
   
   return formatCurrency(amount);
@@ -64,8 +64,15 @@ export function calculatePercentage(value: number, total: number): number {
  * @param format - Optional format type
  * @returns Formatted date string
  */
-export function formatDate(date: string | Date, format: 'short' | 'long' = 'short'): string {
+export function formatDate(date: string | Date | null | undefined, format: 'short' | 'long' = 'short'): string {
+  if (!date) return 'Unknown';
+  
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  // Check if date is valid
+  if (isNaN(dateObj.getTime())) {
+    return 'Invalid Date';
+  }
   
   if (format === 'long') {
     return new Intl.DateTimeFormat(CURRENCY.LOCALE, {
@@ -87,13 +94,25 @@ export function formatDate(date: string | Date, format: 'short' | 'long' = 'shor
  * @param date - Date string or Date object
  * @returns Relative time string
  */
-export function formatRelativeTime(date: string | Date): string {
+export function formatRelativeTime(date: string | Date | null | undefined): string {
+  if (!date) return 'Unknown';
+  
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+  
+  // Check if date is valid
+  if (isNaN(dateObj.getTime())) {
+    return 'Unknown';
+  }
+  
   const now = new Date();
   const diffInMs = now.getTime() - dateObj.getTime();
   const diffInMinutes = Math.floor(diffInMs / 60000);
   const diffInHours = Math.floor(diffInMinutes / 60);
   const diffInDays = Math.floor(diffInHours / 24);
+  
+  if (diffInMinutes < 1) {
+    return 'Just now';
+  }
   
   if (diffInMinutes < 60) {
     return diffInMinutes === 1 ? '1 minute ago' : `${diffInMinutes} minutes ago`;

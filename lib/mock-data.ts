@@ -53,7 +53,6 @@ export const mockInvestors = [
     totalInvested: 150000,
     activeRounds: 2,
     joinedDate: '2025-09-15',
-    kycStatus: 'VERIFIED',
     status: 'ACTIVE',
   },
   {
@@ -64,7 +63,6 @@ export const mockInvestors = [
     totalInvested: 250000,
     activeRounds: 1,
     joinedDate: '2025-08-20',
-    kycStatus: 'VERIFIED',
     status: 'ACTIVE',
   },
   {
@@ -75,7 +73,6 @@ export const mockInvestors = [
     totalInvested: 75000,
     activeRounds: 1,
     joinedDate: '2025-09-28',
-    kycStatus: 'PENDING',
     status: 'ACTIVE',
   },
   {
@@ -86,7 +83,6 @@ export const mockInvestors = [
     totalInvested: 0,
     activeRounds: 0,
     joinedDate: '2025-10-01',
-    kycStatus: 'PENDING',
     status: 'INVITED',
   },
 ];

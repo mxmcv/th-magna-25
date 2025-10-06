@@ -2,7 +2,6 @@
 // These match the Prisma schema and provide type safety across the application
 
 export type RoundStatus = 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'COMPLETED';
-export type KycStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 export type InvestorStatus = 'INVITED' | 'ACTIVE' | 'INACTIVE';
 export type ContributionStatus = 'PENDING' | 'CONFIRMED' | 'FAILED';
 export type InvitationStatus = 'SENT' | 'VIEWED' | 'ACCEPTED' | 'DECLINED';
@@ -29,8 +28,6 @@ export interface Investor {
   email: string;
   name: string;
   walletAddress?: string;
-  kycStatus: KycStatus;
-  kycDocuments?: any;
   joinedDate: Date | string;
   status: InvestorStatus;
   createdAt: Date | string;
@@ -104,7 +101,6 @@ export interface CreateInvestorRequest {
 }
 
 export interface UpdateInvestorRequest extends Partial<CreateInvestorRequest> {
-  kycStatus?: KycStatus;
   status?: InvestorStatus;
 }
 

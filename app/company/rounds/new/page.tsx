@@ -4,14 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, DollarSign, Calendar, Coins } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { rounds as roundsAPI } from "@/lib/api-client";
+import { useRouter } from "next/navigation";
 
 export default function NewRoundPage() {
   const [formData, setFormData] = useState({
     name: "",
+    description: "",
     target: "",
     minContribution: "",
     maxContribution: "",
@@ -23,10 +27,34 @@ export default function NewRoundPage() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Will implement API call later
-    console.log("Creating round:", formData);
+    setIsSubmitting(true);
+
+    try {
+      await roundsAPI.create({
+        name: formData.name,
+        description: formData.description || undefined,
+        target: parseFloat(formData.target),
+        minContribution: parseFloat(formData.minContribution),
+        maxContribution: parseFloat(formData.maxContribution),
+        acceptedTokens: Object.keys(formData.acceptedTokens).filter(
+          (token) => formData.acceptedTokens[token as keyof typeof formData.acceptedTokens]
+        ),
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        status: 'ACTIVE',
+      });
+      router.push('/company/rounds');
+    } catch (error) {
+      console.error('Failed to create round:', error);
+      alert('Failed to create round. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -71,6 +99,24 @@ export default function NewRoundPage() {
                   required
                   className="h-11"
                 />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe the purpose and goals of this fundraising round..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional: Provide context for investors
+                </p>
               </div>
 
               <Separator />
@@ -288,8 +334,8 @@ export default function NewRoundPage() {
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" className="flex-1 h-11">
-              Create Round
+            <Button type="submit" className="flex-1 h-11" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Round'}
             </Button>
           </div>
         </form>

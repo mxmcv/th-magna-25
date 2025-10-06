@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -5,31 +7,87 @@ import { Plus, TrendingUp, Users, CircleDollarSign, ArrowUpRight } from "lucide-
 import Link from "next/link";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
-import { mockRounds, mockRecentActivity, mockDashboardStats } from "@/lib/mock-data";
-import { formatCompactCurrency, formatCurrency, calculatePercentage } from "@/lib/formatters";
+import { formatCompactCurrency, formatCurrency, calculatePercentage, formatRelativeTime } from "@/lib/formatters";
+import { rounds as roundsAPI, contributions as contributionsAPI } from "@/lib/api-client";
+import { useState, useEffect } from "react";
+import { DashboardSkeleton } from "@/components/skeletons";
 
 export default function CompanyDashboard() {
-  // Filter active rounds only
-  const activeRounds = mockRounds.filter((round) => round.status === 'active');
-  const stats = mockDashboardStats.company;
+  const [rounds, setRounds] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [roundsData, contributionsData] = await Promise.all([
+          roundsAPI.list(),
+          contributionsAPI.list(),
+        ]);
+
+        setRounds(roundsData);
+
+        // Process recent contributions
+        const recent = contributionsData
+          .slice(0, 5)
+          .map((c: any) => ({
+            id: c.id,
+            investor: c.investor?.name || 'Unknown',
+            amount: c.amount,
+            round: c.round?.name || 'Unknown Round',
+            time: formatRelativeTime(c.contributedAt),
+          }));
+        setRecentActivity(recent);
+      } catch (err) {
+        console.error('Failed to load dashboard:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  if (loading) return <DashboardSkeleton />;
+  if (error) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-destructive">{error}</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // Filter active rounds
+  const activeRounds = rounds.filter((round: any) => round.status === 'ACTIVE');
+
+  // Calculate stats
+  const totalRaised = rounds.reduce((sum: number, r: any) => sum + r.raised, 0);
+  const totalInvestors = new Set(
+    recentActivity.map((a: any) => a.investor)
+  ).size;
 
   const statsConfig = [
     {
       title: "Total Raised",
-      value: formatCompactCurrency(stats.totalRaised),
-      subtitle: stats.totalRaisedChange,
+      value: formatCompactCurrency(totalRaised),
+      subtitle: `Across ${rounds.length} rounds`,
       icon: CircleDollarSign,
     },
     {
       title: "Active Rounds",
-      value: stats.activeRounds.toString(),
-      subtitle: stats.activeRoundsInfo,
+      value: activeRounds.length.toString(),
+      subtitle: `${rounds.length - activeRounds.length} completed`,
       icon: TrendingUp,
     },
     {
       title: "Total Investors",
-      value: stats.totalInvestors.toString(),
-      subtitle: stats.totalInvestorsChange,
+      value: totalInvestors.toString(),
+      subtitle: `${recentActivity.length} recent contributions`,
       icon: Users,
     },
   ];
@@ -86,7 +144,9 @@ export default function CompanyDashboard() {
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {round.participants} participants • Ends{" "}
-                        {new Date(round.endDate).toLocaleDateString()}
+                        {round.endDate 
+                          ? new Date(round.endDate).toLocaleDateString()
+                          : 'Not set'}
                       </p>
                     </div>
                     <div className="text-right">
@@ -120,25 +180,29 @@ export default function CompanyDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {mockRecentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-primary" />
+            {recentActivity.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No recent activity</p>
+            ) : (
+              recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{activity.investor}</p>
+                      <p className="text-sm text-muted-foreground">{activity.round}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">{activity.investor}</p>
-                    <p className="text-sm text-muted-foreground">{activity.round}</p>
+                  <div className="text-right">
+                    <p className="font-semibold">
+                      {formatCurrency(activity.amount)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{activity.time}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold">
-                    {formatCurrency(activity.amount)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{activity.time}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

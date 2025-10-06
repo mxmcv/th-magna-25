@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, DollarSign, Calendar, Coins } from "lucide-react";
 import Link from "next/link";
 import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { rounds as roundsAPI } from "@/lib/api-client";
 
 export default function EditRoundPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -17,6 +19,7 @@ export default function EditRoundPage({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
+    description: "",
     target: "",
     minContribution: "",
     maxContribution: "",
@@ -28,43 +31,60 @@ export default function EditRoundPage({ params }: { params: Promise<{ id: string
     },
   });
 
-  // Fetch existing round data (mock for now)
+  // Fetch existing round data
   useEffect(() => {
-    // Mock data - replace with API call
-    const mockRound = {
-      id: "1",
-      name: "Seed Round",
-      target: 5000000,
-      minContribution: 10000,
-      maxContribution: 100000,
-      startDate: "2025-09-01",
-      endDate: "2025-11-30",
-      acceptedTokens: ["USDC", "USDT"],
-    };
-
-    // Simulate loading
-    setTimeout(() => {
-      setFormData({
-        name: mockRound.name,
-        target: mockRound.target.toString(),
-        minContribution: mockRound.minContribution.toString(),
-        maxContribution: mockRound.maxContribution.toString(),
-        startDate: mockRound.startDate,
-        endDate: mockRound.endDate,
-        acceptedTokens: {
-          USDC: mockRound.acceptedTokens.includes("USDC"),
-          USDT: mockRound.acceptedTokens.includes("USDT"),
-        },
-      });
-      setLoading(false);
-    }, 500);
+    async function loadRound() {
+      try {
+        const round = await roundsAPI.get(id);
+        setFormData({
+          name: round.name,
+          description: round.description || "",
+          target: round.target.toString(),
+          minContribution: round.minContribution.toString(),
+          maxContribution: round.maxContribution.toString(),
+          startDate: new Date(round.startDate).toISOString().split('T')[0],
+          endDate: new Date(round.endDate).toISOString().split('T')[0],
+          acceptedTokens: {
+            USDC: round.acceptedTokens.includes("USDC"),
+            USDT: round.acceptedTokens.includes("USDT"),
+          },
+        });
+      } catch (error) {
+        console.error('Failed to load round:', error);
+        alert('Failed to load round data');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadRound();
   }, [id]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Will implement API call later
-    console.log("Updating round:", id, formData);
-    router.push(`/company/rounds/${id}`);
+    setIsSubmitting(true);
+
+    try {
+      await roundsAPI.update(id, {
+        name: formData.name,
+        description: formData.description || undefined,
+        target: parseFloat(formData.target),
+        minContribution: parseFloat(formData.minContribution),
+        maxContribution: parseFloat(formData.maxContribution),
+        acceptedTokens: Object.keys(formData.acceptedTokens).filter(
+          (token) => formData.acceptedTokens[token as keyof typeof formData.acceptedTokens]
+        ),
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+      });
+      router.push(`/company/rounds/${id}`);
+    } catch (error) {
+      console.error('Failed to update round:', error);
+      alert('Failed to update round. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -122,6 +142,24 @@ export default function EditRoundPage({ params }: { params: Promise<{ id: string
                   required
                   className="h-11"
                 />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-sm font-medium">
+                  Description
+                </Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe the purpose and goals of this fundraising round..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional: Provide context for investors
+                </p>
               </div>
 
               <Separator />
@@ -359,8 +397,8 @@ export default function EditRoundPage({ params }: { params: Promise<{ id: string
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" className="flex-1 h-11">
-              Update Round
+            <Button type="submit" className="flex-1 h-11" disabled={isSubmitting}>
+              {isSubmitting ? 'Updating...' : 'Update Round'}
             </Button>
           </div>
         </form>

@@ -28,7 +28,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import Link from "next/link";
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,78 +47,46 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { rounds as roundsAPI } from "@/lib/api-client";
+import { DetailViewSkeleton } from "@/components/skeletons";
+import { useRouter } from "next/navigation";
 
 export default function RoundDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
+  const [round, setRound] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
 
-  // Mock data - replace with API call
-  const round = {
-    id,
-    name: "Seed Round",
-    description:
-      "Early-stage funding to develop our DeFi platform and expand the team. This round is crucial for establishing our market presence and building out core features.",
-    target: 5000000,
-    raised: 3200000,
-    minContribution: 10000,
-    maxContribution: 100000,
-    status: "ACTIVE",
-    acceptedTokens: ["USDC", "USDT"],
-    startDate: "2025-09-01",
-    endDate: "2025-11-30",
-    participants: 28,
-    createdAt: "2025-08-15",
-  };
+  useEffect(() => {
+    loadRound();
+  }, [id]);
 
-  const contributions = [
-    {
-      id: "1",
-      investor: "John Smith",
-      email: "john@example.com",
-      amount: 75000,
-      token: "USDC",
-      date: "2025-09-15",
-      status: "CONFIRMED",
-    },
-    {
-      id: "2",
-      investor: "Sarah Johnson",
-      email: "sarah@example.com",
-      amount: 100000,
-      token: "USDT",
-      date: "2025-09-18",
-      status: "CONFIRMED",
-    },
-    {
-      id: "3",
-      investor: "Mike Chen",
-      email: "mike@example.com",
-      amount: 50000,
-      token: "USDC",
-      date: "2025-09-20",
-      status: "CONFIRMED",
-    },
-    {
-      id: "4",
-      investor: "Emily Davis",
-      email: "emily@example.com",
-      amount: 25000,
-      token: "USDC",
-      date: "2025-09-22",
-      status: "PENDING",
-    },
-    {
-      id: "5",
-      investor: "Alex Wong",
-      email: "alex@example.com",
-      amount: 60000,
-      token: "USDT",
-      date: "2025-09-25",
-      status: "CONFIRMED",
-    },
-  ];
+  async function loadRound() {
+    try {
+      const data = await roundsAPI.get(id);
+      setRound(data);
+    } catch (error) {
+      console.error('Failed to load round:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const progress = (round.raised / round.target) * 100;
+  if (loading) return <DetailViewSkeleton />;
+  if (!round) {
+    return (
+      <div className="p-8 text-center">
+        <p>Round not found</p>
+        <Link href="/company/rounds">
+          <Button className="mt-4">Back to Rounds</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const contributions = round.contributions || [];
+  const progress = round.target > 0 ? (round.raised / round.target) * 100 : 0;
   const daysRemaining = Math.ceil(
     (new Date(round.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -144,15 +112,16 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  const handleCloseRound = () => {
+  const handleCloseRound = async () => {
     setIsClosing(true);
-    // Will implement API call later
-    console.log("Closing round:", id);
-    setTimeout(() => {
+    try {
+      await roundsAPI.close(id);
+      router.push('/company/rounds');
+    } catch (error) {
+      console.error('Failed to close round:', error);
+      alert('Failed to close round. Please try again.');
       setIsClosing(false);
-      // In production, redirect after successful close
-      // router.push('/company/rounds');
-    }, 1000);
+    }
   };
 
   return (
@@ -355,7 +324,7 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
                 Max Contribution
               </div>
               <div className="text-lg font-semibold">
-                ${(round.maxContribution / 1000).toFixed(0)}K
+                ${(round.maxContribution / 1000).toFixed(1)}K
               </div>
             </div>
             <div className="space-y-1">
@@ -364,7 +333,9 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
                 Start Date
               </div>
               <div className="text-lg font-semibold">
-                {new Date(round.startDate).toLocaleDateString()}
+                {round.startDate 
+                  ? new Date(round.startDate).toLocaleDateString()
+                  : 'Not set'}
               </div>
             </div>
             <div className="space-y-1">
@@ -373,7 +344,9 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
                 End Date
               </div>
               <div className="text-lg font-semibold">
-                {new Date(round.endDate).toLocaleDateString()}
+                {round.endDate 
+                  ? new Date(round.endDate).toLocaleDateString()
+                  : 'Not set'}
               </div>
             </div>
           </div>
@@ -398,41 +371,51 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
           <CardDescription>All contributions made to this round</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Investor</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Token</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contributions.map((contribution) => (
-                  <TableRow key={contribution.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{contribution.investor}</div>
-                        <div className="text-sm text-muted-foreground">{contribution.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      ${contribution.amount.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{contribution.token}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(contribution.date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(contribution.status)}</TableCell>
+          {contributions.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                No investors have contributed to this round yet.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Investor</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Token</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {contributions.map((contribution: any) => (
+                    <TableRow key={contribution.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{contribution.investor?.name || 'Unknown'}</div>
+                          <div className="text-sm text-muted-foreground">{contribution.investor?.email || 'N/A'}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        ${contribution.amount.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{contribution.token}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {contribution.contributedAt
+                          ? new Date(contribution.contributedAt).toLocaleDateString()
+                          : 'Unknown'}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(contribution.status)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

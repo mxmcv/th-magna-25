@@ -9,13 +9,14 @@ import { ArrowLeft, User, Mail, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, use } from "react";
-import { mockInvestors } from "@/lib/mock-data";
+import { investors as investorsAPI } from "@/lib/api-client";
 
 export default function EditInvestorPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
 
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,25 +24,40 @@ export default function EditInvestorPage({ params }: { params: Promise<{ id: str
   });
 
   useEffect(() => {
-    // In a real application, you would fetch the investor data from an API
-    // For now, we'll use mock data
-    const investor = mockInvestors.find((inv) => inv.id === id);
-
-    if (investor) {
-      setFormData({
-        name: investor.name,
-        email: investor.email,
-        walletAddress: investor.walletAddress || "",
-      });
+    async function loadInvestor() {
+      try {
+        const investor = await investorsAPI.get(id);
+        setFormData({
+          name: investor.name,
+          email: investor.email,
+          walletAddress: investor.walletAddress || "",
+        });
+      } catch (error) {
+        console.error('Failed to load investor:', error);
+        alert('Failed to load investor data');
+      } finally {
+        setLoading(false);
+      }
     }
-    setLoading(false);
+    loadInvestor();
   }, [id]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real application, you would send this data to an API to update the investor
-    console.log("Updating investor:", id, formData);
-    router.push(`/company/investors/${id}`); // Redirect back to investor details after update
+    setIsSubmitting(true);
+
+    try {
+      await investorsAPI.update(id, {
+        name: formData.name,
+        walletAddress: formData.walletAddress || undefined,
+      });
+      router.push(`/company/investors/${id}`);
+    } catch (error) {
+      console.error('Failed to update investor:', error);
+      alert('Failed to update investor. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -171,8 +187,8 @@ export default function EditInvestorPage({ params }: { params: Promise<{ id: str
                 Cancel
               </Button>
             </Link>
-            <Button type="submit" className="flex-1 h-11">
-              Save Changes
+            <Button type="submit" className="flex-1 h-11" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </form>

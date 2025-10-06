@@ -25,12 +25,6 @@ export const INVESTOR_STATUS = {
   INACTIVE: 'inactive',
 } as const;
 
-export const KYC_STATUS = {
-  PENDING: 'pending',
-  VERIFIED: 'verified',
-  REJECTED: 'rejected',
-} as const;
-
 export const STATUS_COLORS = {
   // Round statuses
   active: 'bg-primary/10 text-primary',
@@ -42,10 +36,10 @@ export const STATUS_COLORS = {
   invited: 'bg-blue-500/10 text-blue-500',
   inactive: 'bg-muted text-muted-foreground',
   
-  // KYC statuses
+  // Contribution statuses
   pending: 'bg-yellow-500/10 text-yellow-500',
-  verified: 'bg-green-500/10 text-green-500',
-  rejected: 'bg-red-500/10 text-red-500',
+  confirmed: 'bg-green-500/10 text-green-500',
+  failed: 'bg-red-500/10 text-red-500',
 } as const;
 
 export const DATE_FORMATS = {

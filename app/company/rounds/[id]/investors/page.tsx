@@ -21,18 +21,34 @@ import {
 import { ArrowLeft, Search, MoreVertical, Mail, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, use } from "react";
-import { mockRounds, mockContributions, mockInvestors } from "@/lib/mock-data";
+import { useState, use, useEffect } from "react";
+import { rounds as roundsAPI } from "@/lib/api-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { StatusBadge } from "@/components/dashboard/status-badge";
+import { DetailViewSkeleton } from "@/components/skeletons";
 
 export default function RoundInvestorsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [round, setRound] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Find the round
-  const round = mockRounds.find((r) => r.id === id);
+  useEffect(() => {
+    async function loadRound() {
+      try {
+        const data = await roundsAPI.get(id);
+        setRound(data);
+      } catch (error) {
+        console.error('Failed to load round:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadRound();
+  }, [id]);
+
+  if (loading) return <DetailViewSkeleton />;
 
   if (!round) {
     return (
@@ -42,30 +58,30 @@ export default function RoundInvestorsPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  // Get all contributions for this round
-  const roundContributions = mockContributions.filter(
-    (c) => c.roundId === round.id
-  );
+  // Group contributions by investor
+  const contributions = round.contributions || [];
+  const investorMap = new Map();
+  
+  contributions.forEach((contrib: any) => {
+    const investorId = contrib.investor?.id;
+    if (!investorId) return;
+    
+    if (investorMap.has(investorId)) {
+      const existing = investorMap.get(investorId);
+      existing.totalContributed += contrib.amount;
+      existing.contributions.push(contrib);
+    } else {
+      investorMap.set(investorId, {
+        id: investorId,
+        name: contrib.investor.name,
+        email: contrib.investor.email,
+        totalContributed: contrib.amount,
+        contributions: [contrib],
+      });
+    }
+  });
 
-  // Get investors who contributed to this round
-  const roundInvestors = mockInvestors
-    .filter((investor) =>
-      roundContributions.some((c) => c.investorId === investor.id)
-    )
-    .map((investor) => {
-      const contributions = roundContributions.filter(
-        (c) => c.investorId === investor.id
-      );
-      const totalContributed = contributions.reduce(
-        (sum, c) => sum + c.amount,
-        0
-      );
-      return {
-        ...investor,
-        totalContributed,
-        contributions,
-      };
-    });
+  const roundInvestors = Array.from(investorMap.values());
 
   const filteredInvestors = roundInvestors.filter(
     (investor) =>
@@ -134,7 +150,7 @@ export default function RoundInvestorsPage({ params }: { params: Promise<{ id: s
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ${roundInvestors.length > 0 ? (round.raised / roundInvestors.length / 1000).toFixed(0) : 0}K
+              {roundInvestors.length > 0 ? `$${(round.raised / roundInvestors.length / 1000).toFixed(0)}K` : '$0K'}
             </div>
           </CardContent>
         </Card>
@@ -146,7 +162,7 @@ export default function RoundInvestorsPage({ params }: { params: Promise<{ id: s
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {((round.raised / round.target) * 100).toFixed(1)}%
+              {round.target > 0 ? `${((round.raised / round.target) * 100).toFixed(1)}%` : '0%'}
             </div>
           </CardContent>
         </Card>

@@ -1,10 +1,11 @@
 'use client';
 
-import { Building2, LayoutDashboard, Users, CircleDollarSign, Home } from "lucide-react";
+import { Building2, LayoutDashboard, Users, CircleDollarSign, Home, LogOut } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/lib/auth-context";
 
 export default function CompanyLayout({
   children,
@@ -12,11 +13,18 @@ export default function CompanyLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="h-screen flex flex-col md:flex-row overflow-hidden">
       {/* Sidebar - Hidden on mobile, visible on md+ */}
-      <aside className="hidden md:flex md:w-64 border-r border-border bg-card flex-col">
-        <div className="p-6">
+      <aside className="hidden md:flex md:w-64 border-r border-border bg-card flex-col h-screen sticky top-0">
+        <div className="p-6 flex-shrink-0">
           <div className="mb-6 pl-3">
             <Link href="/" className="inline-flex">
               <Home className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
@@ -66,11 +74,24 @@ export default function CompanyLayout({
           </nav>
         </div>
 
-        <Separator />
-
-        <div className="p-6">
-          <div className="text-xs text-muted-foreground mb-2">Company Portal</div>
-          <div className="text-sm font-medium">Demo Company</div>
+        <div className="mt-auto flex-shrink-0">
+          <Separator />
+          <div className="p-6 space-y-3">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Company Portal</div>
+              <div className="text-sm font-medium">{user?.name || 'Loading...'}</div>
+              <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full gap-2" 
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </div>
         </div>
       </aside>
 
@@ -102,7 +123,7 @@ export default function CompanyLayout({
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-y-auto h-screen">
         {children}
       </main>
     </div>

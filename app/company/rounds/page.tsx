@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, MoreVertical, Users, Target } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,26 +25,52 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/dashboard/status-badge";
-import { mockRounds } from "@/lib/mock-data";
+import { rounds as roundsAPI } from "@/lib/api-client";
 import { formatCompactCurrency, formatDate, calculatePercentage } from "@/lib/formatters";
+import { ListViewSkeleton } from "@/components/skeletons";
 
 export default function RoundsPage() {
-  const rounds = mockRounds;
+  const [rounds, setRounds] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
-  const [roundToClose, setRoundToClose] = useState<typeof mockRounds[0] | null>(null);
+  const [roundToClose, setRoundToClose] = useState<any | null>(null);
   const [isClosing, setIsClosing] = useState(false);
 
-  const handleCloseRound = () => {
+  useEffect(() => {
+    loadRounds();
+  }, []);
+
+  async function loadRounds() {
+    try {
+      setLoading(true);
+      const data = await roundsAPI.list();
+      setRounds(data);
+    } catch (error) {
+      console.error('Failed to load rounds:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleCloseRound = async () => {
+    if (!roundToClose) return;
+    
     setIsClosing(true);
-    console.log("Closing round:", roundToClose?.id);
-    // Will implement API call later
-    setTimeout(() => {
-      setIsClosing(false);
+    try {
+      await roundsAPI.close(roundToClose.id);
+      await loadRounds(); // Reload the list
       setCloseDialogOpen(false);
       setRoundToClose(null);
-    }, 1000);
+    } catch (error) {
+      console.error('Failed to close round:', error);
+      alert('Failed to close round. Please try again.');
+    } finally {
+      setIsClosing(false);
+    }
   };
+
+  if (loading) return <ListViewSkeleton />;
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -142,7 +168,7 @@ export default function RoundsPage() {
                       Min/Max
                     </div>
                     <div className="text-lg font-semibold">
-                      ${round.minContribution / 1000}K - ${round.maxContribution / 1000}K
+                      ${(round.minContribution / 1000).toFixed(1)}K - ${(round.maxContribution / 1000).toFixed(1)}K
                     </div>
                   </div>
                   <div className="space-y-1">
@@ -158,7 +184,9 @@ export default function RoundsPage() {
                   <div className="space-y-1">
                     <div className="text-muted-foreground text-sm">Avg Contribution</div>
                     <div className="text-lg font-semibold">
-                      ${((round.raised / round.participants) / 1000).toFixed(0)}K
+                      {round.participants > 0 
+                        ? `$${((round.raised / round.participants) / 1000).toFixed(0)}K`
+                        : '$0K'}
                     </div>
                   </div>
                 </div>

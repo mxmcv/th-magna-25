@@ -31,7 +31,7 @@ import {
 import { Plus, Search, MoreVertical, Mail, CheckCircle, Clock, Filter } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -39,8 +39,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { investors as investorsAPI } from "@/lib/api-client";
+import { ListViewSkeleton } from "@/components/skeletons";
 
 export default function InvestorsPage() {
+  const [investors, setInvestors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [roundFilter, setRoundFilter] = useState("all");
@@ -54,10 +58,25 @@ export default function InvestorsPage() {
   const [isRemoving, setIsRemoving] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    loadInvestors();
+  }, []);
+
+  async function loadInvestors() {
+    try {
+      const data = await investorsAPI.list();
+      setInvestors(data as any[]);
+    } catch (error) {
+      console.error('Failed to load investors:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const handleRemoveInvestor = () => {
     setIsRemoving(true);
     console.log("Removing investor:", investorToRemove?.id);
-    // Will implement API call later
+    // Note: Implement delete endpoint if needed
     setTimeout(() => {
       setIsRemoving(false);
       setRemoveDialogOpen(false);
@@ -65,57 +84,11 @@ export default function InvestorsPage() {
     }, 1000);
   };
 
-  // Mock data
-  const investors = [
-    {
-      id: "1",
-      name: "John Smith",
-      email: "john@example.com",
-      totalContributed: 150000,
-      rounds: ["Seed Round", "Series A"],
-      status: "active",
-      joinedDate: "2025-09-15",
-    },
-    {
-      id: "2",
-      name: "Sarah Johnson",
-      email: "sarah@example.com",
-      totalContributed: 75000,
-      rounds: ["Series A"],
-      status: "active",
-      joinedDate: "2025-10-01",
-    },
-    {
-      id: "3",
-      name: "Mike Chen",
-      email: "mike@example.com",
-      totalContributed: 200000,
-      rounds: ["Pre-Seed", "Seed Round"],
-      status: "active",
-      joinedDate: "2025-06-20",
-    },
-    {
-      id: "4",
-      name: "Emily Davis",
-      email: "emily@example.com",
-      totalContributed: 0,
-      rounds: [],
-      status: "invited",
-      joinedDate: "2025-10-05",
-    },
-    {
-      id: "5",
-      name: "Alex Wong",
-      email: "alex@example.com",
-      totalContributed: 50000,
-      rounds: ["Seed Round"],
-      status: "active",
-      joinedDate: "2025-09-25",
-    },
-  ];
+  if (loading) return <ListViewSkeleton />;
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    const normalizedStatus = status?.toLowerCase() || "pending";
+    switch (normalizedStatus) {
       case "active":
         return (
           <Badge className="bg-primary/10 text-primary gap-1">
@@ -124,10 +97,17 @@ export default function InvestorsPage() {
           </Badge>
         );
       case "invited":
+      case "pending":
         return (
           <Badge variant="outline" className="gap-1">
             <Clock className="w-3 h-3" />
             Invited
+          </Badge>
+        );
+      case "inactive":
+        return (
+          <Badge variant="secondary" className="gap-1">
+            Inactive
           </Badge>
         );
       default:
@@ -135,25 +115,28 @@ export default function InvestorsPage() {
     }
   };
 
+  const displayInvestors = investors;
+
   // Get unique rounds for filter
   const allRounds = Array.from(
-    new Set(investors.flatMap((inv) => inv.rounds))
+    new Set(displayInvestors.flatMap((inv: any) => inv.rounds || []))
   );
 
-  const filteredInvestors = investors.filter((investor) => {
+  const filteredInvestors = displayInvestors.filter((investor: any) => {
     // Search filter
     const matchesSearch =
       investor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       investor.email.toLowerCase().includes(searchQuery.toLowerCase());
 
     // Status filter
+    const normalizedInvestorStatus = investor.status?.toLowerCase() || "pending";
     const matchesStatus =
-      statusFilter === "all" || investor.status === statusFilter;
+      statusFilter === "all" || normalizedInvestorStatus === statusFilter;
 
     // Round filter
     const matchesRound =
       roundFilter === "all" ||
-      investor.rounds.includes(roundFilter);
+      (investor.rounds || []).includes(roundFilter);
 
     return matchesSearch && matchesStatus && matchesRound;
   });
@@ -205,7 +188,7 @@ export default function InvestorsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              ${(investors.reduce((sum, i) => sum + i.totalContributed, 0) / 1000000).toFixed(1)}M
+              ${(displayInvestors.reduce((sum, i) => sum + (i.totalContributed || 0), 0) / 1000000).toFixed(1)}M
             </div>
           </CardContent>
         </Card>
@@ -217,13 +200,13 @@ export default function InvestorsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              $
-              {(
-                investors.reduce((sum, i) => sum + i.totalContributed, 0) /
-                investors.filter((i) => i.totalContributed > 0).length /
-                1000
-              ).toFixed(0)}
-              K
+              {(() => {
+                const investorsWithContributions = displayInvestors.filter((i) => (i.totalContributed || 0) > 0);
+                const total = displayInvestors.reduce((sum, i) => sum + (i.totalContributed || 0), 0);
+                return investorsWithContributions.length > 0
+                  ? `$${(total / investorsWithContributions.length / 1000).toFixed(0)}K`
+                  : '$0K';
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -296,20 +279,37 @@ export default function InvestorsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Investor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Rounds</TableHead>
-                <TableHead className="text-right">Total Contributed</TableHead>
-                <TableHead className="text-right">Joined</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInvestors.map((investor) => (
+          {filteredInvestors.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">
+                {searchQuery || statusFilter !== "all" || roundFilter !== "all"
+                  ? "No investors match your filters."
+                  : "No investors yet. Invite investors to get started."}
+              </p>
+              {!searchQuery && statusFilter === "all" && roundFilter === "all" && (
+                <Link href="/company/investors/invite">
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Invite Investors
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Investor</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Rounds</TableHead>
+                    <TableHead className="text-right">Total Contributed</TableHead>
+                    <TableHead className="text-right">Joined</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredInvestors.map((investor: any) => (
                 <TableRow key={investor.id}>
                   <TableCell>
                     <div>
@@ -320,10 +320,10 @@ export default function InvestorsPage() {
                   <TableCell>{getStatusBadge(investor.status)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {investor.rounds.length > 0 ? (
-                        investor.rounds.map((round) => (
-                          <Badge key={round} variant="outline" className="text-xs">
-                            {round}
+                      {(investor.rounds || []).length > 0 ? (
+                        (investor.rounds || []).map((round: any) => (
+                          <Badge key={typeof round === 'string' ? round : round.id} variant="outline" className="text-xs">
+                            {typeof round === 'string' ? round : round.name}
                           </Badge>
                         ))
                       ) : (
@@ -332,12 +332,14 @@ export default function InvestorsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-semibold">
-                    {investor.totalContributed > 0
-                      ? `$${investor.totalContributed.toLocaleString()}`
+                    {(investor.totalContributed || 0) > 0
+                      ? `$${(investor.totalContributed || 0).toLocaleString()}`
                       : "-"}
                   </TableCell>
                   <TableCell className="text-right text-sm text-muted-foreground">
-                    {new Date(investor.joinedDate).toLocaleDateString()}
+                    {(investor.joinedDate || investor.createdAt)
+                      ? new Date(investor.joinedDate || investor.createdAt).toLocaleDateString()
+                      : 'Unknown'}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -370,10 +372,11 @@ export default function InvestorsPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, DollarSign, Target, ArrowUpRight } from "lucide-react";
+import { TrendingUp, DollarSign, Target, ArrowUpRight, CheckCircle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import {
   Dialog,
@@ -25,89 +25,122 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { rounds as roundsAPI, contributions as contributionsAPI } from "@/lib/api-client";
+import { DashboardSkeleton } from "@/components/skeletons";
 
 export default function InvestorDashboard() {
   const [contributionAmount, setContributionAmount] = useState("");
   const [selectedToken, setSelectedToken] = useState("USDC");
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
-  // Mock data - represents this investor's portfolio
+  const [myInvestments, setMyInvestments] = useState<any[]>([]);
+  const [availableRounds, setAvailableRounds] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalInvested, setTotalInvested] = useState(0);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dialogCloseRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
+    try {
+      const [allRounds, myContributions] = await Promise.all([
+        roundsAPI.list(),
+        contributionsAPI.list(),
+      ]);
+
+      // API already filters to ACTIVE rounds for investors
+      setAvailableRounds(allRounds);
+
+      // Process contributions
+      const investmentMap = new Map();
+      let total = 0;
+      myContributions.forEach((c: any) => {
+        total += c.amount;
+        const existing = investmentMap.get(c.roundId);
+        if (existing) {
+          existing.myContribution += c.amount;
+        } else {
+          investmentMap.set(c.roundId, {
+            id: c.roundId, // Use roundId as unique identifier
+            roundName: c.round?.name,
+            myContribution: c.amount,
+            token: c.token,
+            totalRaised: c.round?.raised,
+            target: c.round?.target,
+            status: c.round?.status?.toLowerCase(),
+            contributedDate: c.contributedAt,
+          });
+        }
+      });
+
+      setMyInvestments(Array.from(investmentMap.values()));
+      setTotalInvested(total);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) return <DashboardSkeleton />;
+
   const stats = [
     {
       title: "Total Invested",
-      value: "$150K",
-      change: "Across 2 rounds",
+      value: totalInvested > 0 ? `$${(totalInvested / 1000).toFixed(0)}K` : "$0",
+      change: myInvestments.length > 0 ? `Across ${myInvestments.length} rounds` : "No investments yet",
       icon: DollarSign,
     },
     {
       title: "Active Rounds",
-      value: "2",
+      value: myInvestments.filter(i => i.status === 'active').length.toString(),
       change: "In progress",
       icon: TrendingUp,
     },
     {
       title: "Completed Rounds",
-      value: "1",
-      change: "Pre-Seed",
+      value: myInvestments.filter(i => i.status === 'closed').length.toString(),
+      change: "Finalized",
       icon: Target,
     },
   ];
 
-  const myInvestments = [
-    {
-      id: "1",
-      roundName: "Seed Round",
-      companyName: "Demo Company",
-      myContribution: 100000,
-      token: "USDC",
-      totalRaised: 3200000,
-      target: 5000000,
-      status: "active",
-      contributedDate: "2025-09-20",
-    },
-    {
-      id: "2",
-      roundName: "Series A",
-      companyName: "Demo Company",
-      myContribution: 50000,
-      token: "USDT",
-      totalRaised: 1000000,
-      target: 10000000,
-      status: "active",
-      contributedDate: "2025-10-03",
-    },
-  ];
+  const handleContribute = async () => {
+    if (!selectedRoundId || !contributionAmount) return;
 
-  const availableRounds = [
-    {
-      id: "1",
-      name: "Seed Round",
-      company: "Demo Company",
-      target: 5000000,
-      raised: 3200000,
-      minContribution: 10000,
-      maxContribution: 100000,
-      acceptedTokens: ["USDC", "USDT"],
-      endDate: "2025-11-30",
-    },
-    {
-      id: "2",
-      name: "Series A",
-      company: "Demo Company",
-      target: 10000000,
-      raised: 1000000,
-      minContribution: 50000,
-      maxContribution: 500000,
-      acceptedTokens: ["USDC", "USDT"],
-      endDate: "2025-12-31",
-    },
-  ];
+    setIsSubmitting(true);
+    setErrorMessage("");
 
-  const handleContribute = () => {
-    console.log("Contributing:", { selectedRoundId, contributionAmount, selectedToken });
-    // Will implement API call later
-    setContributionAmount("");
-    setSelectedRoundId(null);
+    try {
+      await contributionsAPI.create({
+        roundId: selectedRoundId,
+        amount: parseFloat(contributionAmount),
+        token: selectedToken,
+      });
+      
+      setSuccessMessage('Contribution successful!');
+      setContributionAmount("");
+      setSelectedRoundId(null);
+      
+      // Close dialog
+      dialogCloseRef.current?.click();
+      
+      // Reload data
+      await loadData();
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(""), 5000);
+    } catch (error) {
+      console.error('Failed to contribute:', error);
+      setErrorMessage('Failed to create contribution. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -153,24 +186,26 @@ export default function InvestorDashboard() {
         </CardHeader>
         <CardContent className="space-y-6">
           {myInvestments.map((investment) => {
-            const progress = (investment.totalRaised / investment.target) * 100;
+            const progress = investment.target > 0 ? (investment.totalRaised / investment.target) * 100 : 0;
             return (
               <div key={investment.id} className="space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold">{investment.roundName}</h3>
+                      <h3 className="font-semibold">{investment.roundName || 'Unknown Round'}</h3>
                       <Badge variant="secondary" className="bg-primary/10 text-primary">
                         Active
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Contributed {new Date(investment.contributedDate).toLocaleDateString()}
+                      Contributed {investment.contributedDate 
+                        ? new Date(investment.contributedDate).toLocaleDateString()
+                        : 'Unknown date'}
                     </p>
                   </div>
                   <div className="text-right">
                     <div className="text-lg font-bold">
-                      ${(investment.myContribution / 1000).toFixed(0)}K
+                      {investment.myContribution > 0 ? `$${(investment.myContribution / 1000).toFixed(0)}K` : '$0'}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Your contribution • {investment.token}
@@ -181,8 +216,8 @@ export default function InvestorDashboard() {
                   <Progress value={progress} className="h-2" />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>
-                      ${(investment.totalRaised / 1000000).toFixed(1)}M of $
-                      {(investment.target / 1000000).toFixed(1)}M raised
+                      ${((investment.totalRaised || 0) / 1000000).toFixed(1)}M of $
+                      {((investment.target || 0) / 1000000).toFixed(1)}M raised
                     </span>
                     <span>{progress.toFixed(1)}% funded</span>
                   </div>
@@ -247,14 +282,16 @@ export default function InvestorDashboard() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Min - Max</span>
                       <span className="font-medium">
-                        ${round.minContribution / 1000}K - ${round.maxContribution / 1000}K
+                        ${(round.minContribution / 1000).toFixed(1)}K - ${(round.maxContribution / 1000).toFixed(1)}K
                       </span>
                     </div>
 
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Ends</span>
                       <span className="font-medium">
-                        {new Date(round.endDate).toLocaleDateString()}
+                        {round.endDate 
+                          ? new Date(round.endDate).toLocaleDateString()
+                          : 'Not set'}
                       </span>
                     </div>
 
@@ -286,10 +323,10 @@ export default function InvestorDashboard() {
                               onChange={(e) => setContributionAmount(e.target.value)}
                             />
                             <p className="text-xs text-muted-foreground">
-                              Min: ${(round.minContribution / 1000).toFixed(0)}K • Max: $
+                              Min: ${(round.minContribution / 1000).toFixed(1)}K • Max: $
                               {myInvestment
-                                ? ((round.maxContribution - myInvestment.myContribution) / 1000).toFixed(0)
-                                : (round.maxContribution / 1000).toFixed(0)}
+                                ? ((round.maxContribution - myInvestment.myContribution) / 1000).toFixed(1)
+                                : (round.maxContribution / 1000).toFixed(1)}
                               K
                             </p>
                           </div>
