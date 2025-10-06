@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, DollarSign, Target, ArrowUpRight, CheckCircle, AlertCircle } from "lucide-react";
+import { TrendingUp, DollarSign, Target, ArrowUpRight, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import {
   Dialog,
@@ -39,6 +39,7 @@ export default function InvestorDashboard() {
   const [totalInvested, setTotalInvested] = useState(0);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dialogCloseRef = useRef<HTMLButtonElement>(null);
 
@@ -80,8 +81,10 @@ export default function InvestorDashboard() {
 
       setMyInvestments(Array.from(investmentMap.values()));
       setTotalInvested(total);
+      setLoadError(null);
     } catch (error) {
       console.error('Failed to load data:', error);
+      setLoadError('Failed to load dashboard data. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -111,7 +114,16 @@ export default function InvestorDashboard() {
   ];
 
   const handleContribute = async () => {
-    if (!selectedRoundId || !contributionAmount) return;
+    if (!selectedRoundId || !contributionAmount) {
+      setErrorMessage('Please enter a contribution amount');
+      return;
+    }
+
+    const amount = parseFloat(contributionAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setErrorMessage('Please enter a valid contribution amount');
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMessage("");
@@ -119,7 +131,7 @@ export default function InvestorDashboard() {
     try {
       await contributionsAPI.create({
         roundId: selectedRoundId,
-        amount: parseFloat(contributionAmount),
+        amount,
         token: selectedToken,
       });
       
@@ -137,7 +149,8 @@ export default function InvestorDashboard() {
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (error) {
       console.error('Failed to contribute:', error);
-      setErrorMessage('Failed to create contribution. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to create contribution. Please try again.';
+      setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -149,6 +162,22 @@ export default function InvestorDashboard() {
         <h1 className="text-2xl md:text-3xl font-bold mb-2">Investor Dashboard</h1>
         <p className="text-sm md:text-base text-muted-foreground">Track your investments and discover new opportunities</p>
       </div>
+
+      {/* Error Message */}
+      {(errorMessage || loadError) && (
+        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-destructive">{errorMessage || loadError}</p>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-green-600 dark:text-green-500">{successMessage}</p>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mb-6 md:mb-8">
@@ -337,7 +366,7 @@ export default function InvestorDashboard() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {round.acceptedTokens.map((token) => (
+                                {round.acceptedTokens.map((token: string) => (
                                   <SelectItem key={token} value={token}>
                                     {token}
                                   </SelectItem>
@@ -346,11 +375,19 @@ export default function InvestorDashboard() {
                             </Select>
                           </div>
                         </div>
+                        {errorMessage && (
+                          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-destructive mt-0.5" />
+                            <p className="text-sm text-destructive">{errorMessage}</p>
+                          </div>
+                        )}
                         <DialogFooter>
                           <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
+                            <Button variant="outline" ref={dialogCloseRef}>Cancel</Button>
                           </DialogClose>
-                          <Button onClick={handleContribute}>Confirm Contribution</Button>
+                          <Button onClick={handleContribute} disabled={isSubmitting}>
+                            {isSubmitting ? 'Processing...' : 'Confirm Contribution'}
+                          </Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>

@@ -44,18 +44,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function login(email: string, password: string, userType: 'company' | 'investor' = 'company') {
-    const response: any = await auth.login(email, password, userType);
-    setUser(response.user);
+    try {
+      const response: any = await auth.login(email, password, userType);
+      if (response?.user) {
+        setUser(response.user);
+      } else {
+        throw new Error('Invalid login response');
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
   }
 
   async function logout() {
-    await auth.logout();
-    setUser(null);
+    try {
+      await auth.logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setUser(null);
+    }
   }
 
   async function register(email: string, name: string, password: string) {
-    const response: any = await auth.register(email, name, password);
-    setUser(response.company);
+    try {
+      const response: any = await auth.register(email, name, password);
+      if (response?.company) {
+        setUser(response.company);
+      } else {
+        throw new Error('Invalid registration response');
+      }
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    }
   }
 
   return (

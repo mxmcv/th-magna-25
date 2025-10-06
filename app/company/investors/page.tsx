@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, MoreVertical, Mail, CheckCircle, Clock, Filter } from "lucide-react";
+import { Plus, Search, MoreVertical, Mail, CheckCircle, Clock, Filter, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -45,6 +45,7 @@ import { ListViewSkeleton } from "@/components/skeletons";
 export default function InvestorsPage() {
   const [investors, setInvestors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [roundFilter, setRoundFilter] = useState("all");
@@ -66,8 +67,10 @@ export default function InvestorsPage() {
     try {
       const data = await investorsAPI.list();
       setInvestors(data as any[]);
-    } catch (error) {
-      console.error('Failed to load investors:', error);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load investors:', err);
+      setError('Failed to load investors. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -85,6 +88,24 @@ export default function InvestorsPage() {
   };
 
   if (loading) return <ListViewSkeleton />;
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="p-6 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-destructive mb-3">{error}</p>
+              <Button onClick={loadInvestors} size="sm">
+                Retry
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusBadge = (status: string) => {
     const normalizedStatus = status?.toLowerCase() || "pending";

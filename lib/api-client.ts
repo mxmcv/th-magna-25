@@ -1,6 +1,8 @@
 // API Client for front-end
 // Provides type-safe methods to call backend APIs
 
+import type { Round, Investor, Contribution, Invitation } from './types';
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -215,23 +217,23 @@ export const auth = {
 };
 
 export const rounds = {
-  list: () => apiClient.getRounds(),
-  get: (id: string) => apiClient.getRound(id),
+  list: () => apiClient.getRounds() as Promise<Round[]>,
+  get: (id: string) => apiClient.getRound(id) as Promise<Round>,
   create: (data: Parameters<typeof apiClient.createRound>[0]) =>
-    apiClient.createRound(data),
+    apiClient.createRound(data) as Promise<Round>,
   update: (id: string, data: Parameters<typeof apiClient.updateRound>[1]) =>
-    apiClient.updateRound(id, data),
+    apiClient.updateRound(id, data) as Promise<Round>,
   delete: (id: string) => apiClient.deleteRound(id),
-  close: (id: string) => apiClient.closeRound(id),
+  close: (id: string) => apiClient.closeRound(id) as Promise<Round>,
 };
 
 export const investors = {
-  list: () => apiClient.getInvestors(),
-  get: (id: string) => apiClient.getInvestor(id),
+  list: () => apiClient.getInvestors() as Promise<Investor[]>,
+  get: (id: string) => apiClient.getInvestor(id) as Promise<Investor>,
   create: (data: Parameters<typeof apiClient.createInvestor>[0]) =>
-    apiClient.createInvestor(data),
+    apiClient.createInvestor(data) as Promise<Investor>,
   update: (id: string, data: Parameters<typeof apiClient.updateInvestor>[1]) =>
-    apiClient.updateInvestor(id, data),
+    apiClient.updateInvestor(id, data) as Promise<Investor>,
 };
 
 export const invitations = {
@@ -240,9 +242,9 @@ export const invitations = {
 };
 
 export const contributions = {
-  list: () => apiClient.getContributions(),
+  list: () => apiClient.getContributions() as Promise<Contribution[]>,
   create: (data: Parameters<typeof apiClient.createContribution>[0]) =>
-    apiClient.createContribution(data),
+    apiClient.createContribution(data) as Promise<Contribution>,
   confirm: (id: string) => apiClient.confirmContribution(id),
 };
 

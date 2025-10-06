@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, DollarSign, Calendar, Coins } from "lucide-react";
+import { ArrowLeft, DollarSign, Calendar, Coins, AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { rounds as roundsAPI } from "@/lib/api-client";
@@ -28,30 +28,71 @@ export default function NewRoundPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    
+    // Client-side validation
+    const target = parseFloat(formData.target);
+    const minContribution = parseFloat(formData.minContribution);
+    const maxContribution = parseFloat(formData.maxContribution);
+    
+    if (isNaN(target) || target <= 0) {
+      setError('Please enter a valid target amount');
+      return;
+    }
+    
+    if (isNaN(minContribution) || minContribution <= 0) {
+      setError('Please enter a valid minimum contribution');
+      return;
+    }
+    
+    if (isNaN(maxContribution) || maxContribution <= 0) {
+      setError('Please enter a valid maximum contribution');
+      return;
+    }
+    
+    if (minContribution >= maxContribution) {
+      setError('Minimum contribution must be less than maximum contribution');
+      return;
+    }
+    
+    const acceptedTokens = Object.keys(formData.acceptedTokens).filter(
+      (token) => formData.acceptedTokens[token as keyof typeof formData.acceptedTokens]
+    );
+    
+    if (acceptedTokens.length === 0) {
+      setError('Please select at least one accepted token');
+      return;
+    }
+    
+    if (new Date(formData.startDate) >= new Date(formData.endDate)) {
+      setError('End date must be after start date');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       await roundsAPI.create({
         name: formData.name,
         description: formData.description || undefined,
-        target: parseFloat(formData.target),
-        minContribution: parseFloat(formData.minContribution),
-        maxContribution: parseFloat(formData.maxContribution),
-        acceptedTokens: Object.keys(formData.acceptedTokens).filter(
-          (token) => formData.acceptedTokens[token as keyof typeof formData.acceptedTokens]
-        ),
+        target,
+        minContribution,
+        maxContribution,
+        acceptedTokens,
         startDate: formData.startDate,
         endDate: formData.endDate,
         status: 'ACTIVE',
       });
       router.push('/company/rounds');
-    } catch (error) {
-      console.error('Failed to create round:', error);
-      alert('Failed to create round. Please try again.');
+    } catch (err) {
+      console.error('Failed to create round:', err);
+      const message = err instanceof Error ? err.message : 'Failed to create round. Please try again.';
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -71,6 +112,14 @@ export default function NewRoundPage() {
       </div>
 
       <div className="max-w-3xl mx-auto">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <Card>

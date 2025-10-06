@@ -1,20 +1,48 @@
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Users, CircleDollarSign, ArrowUpRight } from "lucide-react";
-import Link from "next/link";
-import { StatCard } from "@/components/dashboard/stat-card";
-import { StatusBadge } from "@/components/dashboard/status-badge";
-import { formatCompactCurrency, formatCurrency, calculatePercentage, formatRelativeTime } from "@/lib/formatters";
-import { rounds as roundsAPI, contributions as contributionsAPI } from "@/lib/api-client";
-import { useState, useEffect } from "react";
-import { DashboardSkeleton } from "@/components/skeletons";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import {
+  Plus,
+  TrendingUp,
+  Users,
+  CircleDollarSign,
+  ArrowUpRight,
+} from 'lucide-react';
+import Link from 'next/link';
+import { StatCard } from '@/components/dashboard/stat-card';
+import { StatusBadge } from '@/components/dashboard/status-badge';
+import {
+  formatCompactCurrency,
+  formatCurrency,
+  calculatePercentage,
+  formatRelativeTime,
+} from '@/lib/formatters';
+import {
+  rounds as roundsAPI,
+  contributions as contributionsAPI,
+} from '@/lib/api-client';
+import { useState, useEffect } from 'react';
+import { DashboardSkeleton } from '@/components/skeletons';
+
+interface ProcessedContribution {
+  id: string;
+  investor: string;
+  amount: number;
+  round: string;
+  time: string;
+}
 
 export default function CompanyDashboard() {
   const [rounds, setRounds] = useState<any[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ProcessedContribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,12 +58,12 @@ export default function CompanyDashboard() {
         setRounds(roundsData);
 
         // Process recent contributions
-        const recent = contributionsData
+        const recent: ProcessedContribution[] = contributionsData
           .slice(0, 5)
           .map((c: any) => ({
             id: c.id,
             investor: c.investor?.name || 'Unknown',
-            amount: c.amount,
+            amount: c.amount || 0,
             round: c.round?.name || 'Unknown Round',
             time: formatRelativeTime(c.contributedAt),
           }));
@@ -66,26 +94,24 @@ export default function CompanyDashboard() {
   const activeRounds = rounds.filter((round: any) => round.status === 'ACTIVE');
 
   // Calculate stats
-  const totalRaised = rounds.reduce((sum: number, r: any) => sum + r.raised, 0);
-  const totalInvestors = new Set(
-    recentActivity.map((a: any) => a.investor)
-  ).size;
+  const totalRaised = rounds.reduce((sum: number, r: any) => sum + (r.raised || 0), 0);
+  const totalInvestors = new Set(recentActivity.map((a) => a.investor)).size;
 
   const statsConfig = [
     {
-      title: "Total Raised",
+      title: 'Total Raised',
       value: formatCompactCurrency(totalRaised),
       subtitle: `Across ${rounds.length} rounds`,
       icon: CircleDollarSign,
     },
     {
-      title: "Active Rounds",
+      title: 'Active Rounds',
       value: activeRounds.length.toString(),
       subtitle: `${rounds.length - activeRounds.length} completed`,
       icon: TrendingUp,
     },
     {
-      title: "Total Investors",
+      title: 'Total Investors',
       value: totalInvestors.toString(),
       subtitle: `${recentActivity.length} recent contributions`,
       icon: Users,
@@ -97,7 +123,9 @@ export default function CompanyDashboard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold mb-2">Dashboard</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Overview of your fundraising activity</p>
+          <p className="text-sm md:text-base text-muted-foreground">
+            Overview of your fundraising activity
+          </p>
         </div>
         <Link href="/company/rounds/new">
           <Button size="lg" className="gap-2 w-full sm:w-auto">
@@ -121,7 +149,9 @@ export default function CompanyDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Active Rounds</CardTitle>
-                <CardDescription>Monitor your ongoing fundraising rounds</CardDescription>
+                <CardDescription>
+                  Monitor your ongoing fundraising rounds
+                </CardDescription>
               </div>
               <Link href="/company/rounds">
                 <Button variant="ghost" size="sm" className="gap-1">
@@ -132,9 +162,14 @@ export default function CompanyDashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {activeRounds.map((round) => {
-              const progress = (round.raised / round.target) * 100;
-              return (
+            {activeRounds.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No active rounds. Create a new round to start fundraising.
+              </p>
+            ) : (
+              activeRounds.map((round) => {
+                const progress = round.target > 0 ? (round.raised / round.target) * 100 : 0;
+                return (
                 <div key={round.id} className="space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
@@ -143,8 +178,8 @@ export default function CompanyDashboard() {
                         <StatusBadge status={round.status} />
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {round.participants} participants • Ends{" "}
-                        {round.endDate 
+                        {round.participants} participants • Ends{' '}
+                        {round.endDate
                           ? new Date(round.endDate).toLocaleDateString()
                           : 'Not set'}
                       </p>
@@ -158,16 +193,24 @@ export default function CompanyDashboard() {
                       </div>
                     </div>
                   </div>
-                  <Progress value={calculatePercentage(round.raised, round.target)} className="h-2" />
+                  <Progress
+                    value={calculatePercentage(round.raised, round.target)}
+                    className="h-2"
+                  />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{calculatePercentage(round.raised, round.target)}% funded</span>
                     <span>
-                      {formatCompactCurrency(round.minContribution)} - {formatCompactCurrency(round.maxContribution)} per investor
+                      {calculatePercentage(round.raised, round.target)}% funded
+                    </span>
+                    <span>
+                      {formatCompactCurrency(round.minContribution)} -{' '}
+                      {formatCompactCurrency(round.maxContribution)} per
+                      investor
                     </span>
                   </div>
                 </div>
               );
-            })}
+            })
+            )}
           </CardContent>
         </Card>
       </div>
@@ -181,24 +224,33 @@ export default function CompanyDashboard() {
         <CardContent>
           <div className="space-y-4">
             {recentActivity.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No recent activity</p>
+              <p className="text-center text-muted-foreground py-8">
+                No recent activity
+              </p>
             ) : (
               recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center justify-between py-2">
+                <div
+                  key={activity.id}
+                  className="flex items-center justify-between py-2"
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <Users className="w-5 h-5 text-primary" />
                     </div>
                     <div>
                       <p className="font-medium">{activity.investor}</p>
-                      <p className="text-sm text-muted-foreground">{activity.round}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {activity.round}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">
                       {formatCurrency(activity.amount)}
                     </p>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {activity.time}
+                    </p>
                   </div>
                 </div>
               ))

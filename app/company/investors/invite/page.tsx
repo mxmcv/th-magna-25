@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Mail, UserPlus, Send, X } from "lucide-react";
+import { ArrowLeft, Mail, UserPlus, Send, X, AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { rounds as roundsAPI, invitations as invitationsAPI, investors as investorsAPI } from "@/lib/api-client";
@@ -26,14 +26,18 @@ export default function InviteInvestorsPage() {
   const [selectedRounds, setSelectedRounds] = useState<string[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadRounds() {
       try {
         const data = await roundsAPI.list();
         setRounds(data);
+        setError(null);
       } catch (error) {
         console.error('Failed to load rounds:', error);
+        setError('Failed to load fundraising rounds. Please refresh the page.');
       } finally {
         setLoading(false);
       }
@@ -42,10 +46,28 @@ export default function InviteInvestorsPage() {
   }, []);
 
   const handleAddEmail = () => {
-    if (currentEmail && currentEmail.includes("@")) {
-      setEmails([...emails, currentEmail]);
-      setCurrentEmail("");
+    const trimmedEmail = currentEmail.trim();
+    
+    if (!trimmedEmail) return;
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setError('Please enter a valid email address');
+      setTimeout(() => setError(null), 3000);
+      return;
     }
+    
+    // Check for duplicates
+    if (emails.includes(trimmedEmail)) {
+      setError('This email has already been added');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    
+    setEmails([...emails, trimmedEmail]);
+    setCurrentEmail("");
+    setError(null);
   };
 
   const handleRemoveEmail = (index: number) => {
@@ -87,12 +109,14 @@ export default function InviteInvestorsPage() {
     }
     
     if (emailsToInvite.length === 0) {
-      alert('Please add at least one email address');
+      setError('Please add at least one email address');
+      setTimeout(() => setError(null), 3000);
       return;
     }
     
     if (selectedRounds.length === 0) {
-      alert('Please select at least one round');
+      setError('Please select at least one round');
+      setTimeout(() => setError(null), 3000);
       return;
     }
 
@@ -112,17 +136,20 @@ export default function InviteInvestorsPage() {
 
       // Get all investors to map emails to IDs
       const allInvestors = await investorsAPI.list();
-      const investorIds = emailsToInvite.map(email => {
-        const investor = allInvestors.find((inv: any) => inv.email === email);
-        return investor?.id;
-      }).filter(Boolean);
+      const investorIds = emailsToInvite
+        .map(email => {
+          const investor = allInvestors.find((inv: any) => inv.email === email);
+          return investor?.id;
+        })
+        .filter((id): id is string => typeof id === 'string');
 
       // Send invitations for each round
       for (const roundId of selectedRounds) {
         await invitationsAPI.send(roundId, investorIds);
       }
 
-      alert(`Successfully sent ${emailsToInvite.length} invitations for ${selectedRounds.length} round(s)!`);
+      setSuccess(`Successfully sent ${emailsToInvite.length} invitation(s) for ${selectedRounds.length} round(s)!`);
+      setTimeout(() => setSuccess(null), 5000);
       
       // Reset form
       if (inviteType === "single") {
@@ -131,9 +158,11 @@ export default function InviteInvestorsPage() {
         setEmails([]);
       }
       setSelectedRounds([]);
-    } catch (error) {
-      console.error('Failed to send invitations:', error);
-      alert('Some invitations failed to send. Please try again.');
+    } catch (err) {
+      console.error('Failed to send invitations:', err);
+      const message = err instanceof Error ? err.message : 'Some invitations failed to send. Please try again.';
+      setError(message);
+      setTimeout(() => setError(null), 5000);
     } finally {
       setIsSubmitting(false);
     }
@@ -156,6 +185,22 @@ export default function InviteInvestorsPage() {
       </div>
 
       <div className="max-w-3xl mx-auto">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {success && (
+          <div className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-green-600 dark:text-green-500">{success}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Invitation Type */}
           <Card>
