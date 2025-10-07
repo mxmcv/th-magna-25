@@ -1,5 +1,6 @@
-// Server-side validation utilities
-// Validates request data before processing
+// server-side validation - never trust client input
+// reuses shared validation functions from lib/validations.ts
+// throws ApiError with structured codes for consistent error responses
 
 import { ApiError, ErrorCodes } from './responses';
 import {
@@ -52,7 +53,8 @@ export function validateRoundData(data: any): {
     throw new ApiError(limitsValidation.error!, 400, ErrorCodes.VALIDATION_ERROR);
   }
 
-  // Validate tokens
+  // validate accepted tokens - must be USDC/USDT for now
+  // keeping this flexible as an array for future token additions
   if (!Array.isArray(data.acceptedTokens) || data.acceptedTokens.length === 0) {
     throw new ApiError('At least one accepted token is required', 400, ErrorCodes.INVALID_INPUT);
   }

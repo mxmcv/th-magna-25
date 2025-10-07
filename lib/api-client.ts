@@ -1,7 +1,7 @@
 /**
- * API Client
- * Type-safe API client for all backend endpoints
- * Provides a consistent interface for making API requests
+ * centralized API client - all frontend network calls go through here
+ * benefits: consistent error handling, automatic cookie inclusion, typed responses
+ * makes it easy to add retry logic or request interceptors later
  */
 
 import type {
@@ -30,11 +30,9 @@ class ApiClient {
   }
 
   /**
-   * Makes an API request and handles errors consistently
-   * @param endpoint - The API endpoint path
-   * @param options - Fetch options
-   * @returns Parsed JSON response
-   * @throws Error message string for handled errors
+   * core request method - wraps fetch with our API conventions
+   * credentials: 'include' is critical - sends session cookie on every request
+   * returns just the error message (not full error object) to avoid Next.js dev overlay
    */
   private async request<T>(
     endpoint: string,
@@ -49,7 +47,7 @@ class ApiClient {
           'Content-Type': 'application/json',
           ...options.headers,
         },
-        credentials: 'include', // Important for cookies
+        credentials: 'include', // sends session cookie automatically
       });
 
       const data = await response.json();

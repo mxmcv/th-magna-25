@@ -1,5 +1,8 @@
 "use client";
 
+// bulk invite page - lets companies select multiple investors and rounds
+// generates unique links per investor/round pair for secure onboarding
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,7 +48,7 @@ export default function InviteInvestorsPage() {
           roundsAPI.list(),
           investorsAPI.list(),
         ]);
-        // Only show active rounds for invitations
+        // only show active rounds - inviting to closed/completed rounds doesn't make sense
         setRounds(roundsData.filter((r: any) => r.status === 'ACTIVE'));
         setInvestors(investorsData);
       } catch {

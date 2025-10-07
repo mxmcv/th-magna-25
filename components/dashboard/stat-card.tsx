@@ -1,4 +1,5 @@
-// Reusable statistics card component
+// stat card - displays KPIs on dashboards with consistent layout
+// accepts lucide icons as props for flexibility
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LucideIcon } from 'lucide-react';
 
