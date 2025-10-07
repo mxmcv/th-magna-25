@@ -1,4 +1,4 @@
-// Rounds API - List and Create
+// rounds api - handles listing and creating fundraising rounds
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { successResponse, handleApiError } from '@/lib/api/responses';
@@ -6,81 +6,93 @@ import { requireAuth, requireCompanyAuth } from '@/lib/api/auth';
 import { validateRoundData, parseRequestBody } from '@/lib/api/validation';
 import { auditHelpers } from '@/lib/api/audit';
 
-// GET /api/rounds - List rounds (companies see their own, investors see all active)
+// key design decision: investors only see rounds they're invited to
+// prevents them from seeing all rounds across all companies
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);
 
-    // Companies see only their rounds, investors see all active rounds
-    const whereClause = session.userType === 'company'
-      ? { companyId: session.userId }
-      : { status: 'ACTIVE' }; // Investors only see active rounds
+    let rounds;
 
-    const rounds = await prisma.round.findMany({
-      where: whereClause,
-      include: {
-        _count: {
-          select: {
-            contributions: true,
-            invitations: true,
+    if (session.userType === 'company') {
+      // companies see all their rounds
+      rounds = await prisma.round.findMany({
+        where: { companyId: session.userId },
+        include: {
+          _count: {
+            select: {
+              contributions: true,
+              invitations: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } else {
+      // investors only see rounds they have invitations for
+      // prevents data leakage between companies
+      const invitations = await prisma.invitation.findMany({
+        where: {
+          investorId: session.userId,
+          status: { in: ['SENT', 'ACCEPTED', 'VIEWED'] },
+        },
+        select: {
+          roundId: true,
+        },
+      });
 
-    // Calculate participants for each round
-    const roundsWithStats = await Promise.all(
-      rounds.map(async (round) => {
-        const participants = await prisma.contribution.groupBy({
-          by: ['investorId'],
-          where: {
-            roundId: round.id,
-            status: 'CONFIRMED',
+      const roundIds = invitations.map(inv => inv.roundId);
+
+      rounds = await prisma.round.findMany({
+        where: {
+          id: { in: roundIds },
+          status: { in: ['ACTIVE', 'CLOSED', 'COMPLETED'] },
+        },
+        include: {
+          _count: {
+            select: {
+              contributions: true,
+              invitations: true,
+            },
           },
-        });
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    }
 
-        return {
-          ...round,
-          participants: participants.length,
-        };
-      })
-    );
-
-    return successResponse(roundsWithStats);
+    return successResponse(rounds);
   } catch (error) {
     return handleApiError(error);
   }
 }
 
-// POST /api/rounds - Create a new round
+// only companies can create rounds
 export async function POST(request: NextRequest) {
   try {
     const company = await requireCompanyAuth(request);
     const data = await parseRequestBody(request);
-    
-    // Validate and get clean data
-    const validated = validateRoundData({
-      ...data,
-      companyId: company.id,
-    });
+
+    // validate before hitting the database
+    const validatedData = validateRoundData(data);
 
     const round = await prisma.round.create({
       data: {
-        ...validated,
-        status: data.status || 'DRAFT',
+        ...validatedData,
+        companyId: company.id,
         raised: 0,
+        status: 'ACTIVE',
       },
     });
 
-    // Audit log
+    // audit all round creation for compliance
     await auditHelpers.logRoundCreated(round.id, company.id, round);
 
-    return successResponse(round, 201);
+    return successResponse(round);
   } catch (error) {
     return handleApiError(error);
   }
 }
-

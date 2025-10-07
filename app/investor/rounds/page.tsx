@@ -65,7 +65,7 @@ export default function AvailableRoundsPage() {
       
       setRounds(roundsWithContributions);
     } catch (error) {
-      console.error('Failed to load rounds:', error);
+      // Silently fail - user will see empty state
     } finally {
       setLoading(false);
     }
@@ -99,8 +99,8 @@ export default function AvailableRoundsPage() {
       // Clear success message after 5 seconds
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (error) {
-      console.error('Failed to contribute:', error);
-      setErrorMessage('Failed to create contribution. Please try again.');
+      // Error is a string message from Promise.reject
+      setErrorMessage(typeof error === 'string' ? error : 'Failed to create contribution. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -291,11 +291,18 @@ export default function AvailableRoundsPage() {
                           onChange={(e) => setContributionAmount(e.target.value)}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Min: ${(round.minContribution / 1000).toFixed(1)}K • Max: $
-                          {hasInvested
-                            ? (remainingAllocation / 1000).toFixed(1)
-                            : (round.maxContribution / 1000).toFixed(1)}
-                          K
+                          {hasInvested ? (
+                            <>
+                              You can add up to $
+                              {(remainingAllocation / 1000).toFixed(1)}
+                              K more
+                            </>
+                          ) : (
+                            <>
+                              Min: ${(round.minContribution / 1000).toFixed(1)}K • Max: $
+                              {(round.maxContribution / 1000).toFixed(1)}K
+                            </>
+                          )}
                         </p>
                       </div>
                       <div className="space-y-2">
@@ -324,7 +331,7 @@ export default function AvailableRoundsPage() {
                       <DialogClose asChild>
                         <Button ref={dialogCloseRef} variant="outline">Cancel</Button>
                       </DialogClose>
-                      <Button onClick={handleContribute} disabled={isSubmitting}>
+                      <Button onClick={() => handleContribute().catch(() => {})} disabled={isSubmitting}>
                         {isSubmitting ? 'Processing...' : 'Confirm Contribution'}
                       </Button>
                     </DialogFooter>

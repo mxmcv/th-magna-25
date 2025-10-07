@@ -41,7 +41,6 @@ export default function CompanyDashboard() {
           }));
         setRecentActivity(recent);
       } catch (err) {
-        console.error('Failed to load dashboard:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
         setLoading(false);

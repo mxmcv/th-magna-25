@@ -8,7 +8,7 @@ import {
   ErrorCodes,
 } from '@/lib/api/responses';
 import { requireInvestorAuth, requireCompanyAuth, getCurrentUser } from '@/lib/api/auth';
-import { validateContributionData, parseRequestBody } from '@/lib/api/validation';
+import { parseRequestBody } from '@/lib/api/validation';
 import { auditHelpers } from '@/lib/api/audit';
 
 // GET /api/contributions - List contributions
@@ -66,6 +66,12 @@ export async function GET(request: NextRequest) {
               target: true,
               status: true,
               maxContribution: true,
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -81,13 +87,26 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/contributions - Create new contribution (investor only)
+// POST /api/contributions - Create a new contribution
 export async function POST(request: NextRequest) {
   try {
     const investor = await requireInvestorAuth(request);
     const data = await parseRequestBody(request);
 
-    // Get round details for validation
+    // Validate required fields
+    if (!data.roundId || typeof data.roundId !== 'string') {
+      throw new ApiError('Round ID is required', 400, ErrorCodes.MISSING_REQUIRED_FIELD);
+    }
+
+    if (!data.amount || typeof data.amount !== 'number') {
+      throw new ApiError('Amount is required', 400, ErrorCodes.MISSING_REQUIRED_FIELD);
+    }
+
+    if (!data.token || typeof data.token !== 'string') {
+      throw new ApiError('Token is required', 400, ErrorCodes.MISSING_REQUIRED_FIELD);
+    }
+
+    // Check if round exists and is active
     const round = await prisma.round.findUnique({
       where: { id: data.roundId },
     });
@@ -96,83 +115,75 @@ export async function POST(request: NextRequest) {
       throw new ApiError('Round not found', 404, ErrorCodes.NOT_FOUND);
     }
 
-    // Check round status
     if (round.status !== 'ACTIVE') {
       throw new ApiError(
         'This round is not currently accepting contributions',
-        409,
+        400,
         ErrorCodes.INVALID_STATE
       );
     }
 
-    // Check round dates
-    const now = new Date();
-    if (now < round.startDate || now > round.endDate) {
+    // Check min/max contribution limits
+    if (data.amount < round.minContribution) {
       throw new ApiError(
-        'This round is not within its contribution period',
-        409,
-        ErrorCodes.INVALID_STATE
+        `Contribution must be at least $${round.minContribution.toLocaleString()}`,
+        400,
+        ErrorCodes.INVALID_INPUT
       );
     }
 
-    // Validate contribution data
-    const validated = validateContributionData(
-      {
-        ...data,
-        investorId: investor.id,
-      },
-      round
-    );
-
-    // Check if investor has already contributed and would exceed max
+    // Check existing contributions from this investor
     const existingContributions = await prisma.contribution.findMany({
       where: {
-        roundId: validated.roundId,
-        investorId: validated.investorId,
-        status: { in: ['PENDING', 'CONFIRMED'] },
+        roundId: data.roundId,
+        investorId: investor.id,
+        status: 'CONFIRMED',
       },
     });
 
-    const totalContributed = existingContributions.reduce(
+    const totalExisting = existingContributions.reduce(
       (sum, c) => sum + c.amount,
       0
     );
+    const newTotal = totalExisting + data.amount;
 
-    if (totalContributed + validated.amount > round.maxContribution) {
+    if (newTotal > round.maxContribution) {
       throw new ApiError(
-        `Total contribution would exceed maximum of $${round.maxContribution.toLocaleString()}`,
+        `Total contribution cannot exceed $${round.maxContribution.toLocaleString()}. You have already contributed $${totalExisting.toLocaleString()}.`,
         400,
-        ErrorCodes.VALIDATION_ERROR
+        ErrorCodes.INVALID_INPUT
+      );
+    }
+
+    // Validate token is accepted
+    if (!round.acceptedTokens.includes(data.token)) {
+      throw new ApiError(
+        `This round does not accept ${data.token}. Accepted tokens: ${round.acceptedTokens.join(', ')}`,
+        400,
+        ErrorCodes.INVALID_INPUT
       );
     }
 
     // Create contribution
     const contribution = await prisma.contribution.create({
       data: {
-        ...validated,
-        // In production, this would remain PENDING until blockchain confirmation
-        // For demo, we'll set it to CONFIRMED
+        roundId: data.roundId,
+        investorId: investor.id,
+        amount: data.amount,
+        token: data.token,
         status: 'CONFIRMED',
         confirmedAt: new Date(),
         // Mock transaction hash
         transactionHash: `0x${Math.random().toString(16).substring(2)}`,
       },
-      include: {
-        round: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
     });
 
     // Update round raised amount
     await prisma.round.update({
-      where: { id: validated.roundId },
+      where: { id: data.roundId },
       data: {
         raised: {
-          increment: validated.amount,
+          increment: data.amount,
         },
       },
     });
@@ -184,9 +195,8 @@ export async function POST(request: NextRequest) {
       contribution
     );
 
-    return successResponse(contribution, 201);
+    return successResponse(contribution);
   } catch (error) {
     return handleApiError(error);
   }
 }
-

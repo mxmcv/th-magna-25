@@ -26,7 +26,7 @@ export default function ContributionHistoryPage() {
         const data = await contributionsAPI.list();
         setContributions(data);
       } catch (error) {
-        console.error('Failed to load history:', error);
+        // Silently fail - user will see skeleton
       } finally {
         setLoading(false);
       }
@@ -137,7 +137,7 @@ export default function ContributionHistoryPage() {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">
-                      Demo Company • Contributed{" "}
+                      {contribution.round?.company?.name || 'Company'} • Contributed{" "}
                       {contribution.contributedAt 
                         ? new Date(contribution.contributedAt).toLocaleDateString()
                         : 'Unknown date'}
@@ -217,7 +217,7 @@ export default function ContributionHistoryPage() {
                       <div>
                         <div className="font-medium">{contribution.round?.name || 'Unknown Round'}</div>
                         <div className="text-sm text-muted-foreground">
-                          Demo Company
+                          {contribution.round?.company?.name || 'Company'}
                         </div>
                       </div>
                     </TableCell>

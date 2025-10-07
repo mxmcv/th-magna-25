@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Plus, MoreVertical, Users, Target } from "lucide-react";
+import { Plus, MoreVertical, Users, Target, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -36,6 +36,7 @@ export default function RoundsPage() {
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [roundToClose, setRoundToClose] = useState<any | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     loadRounds();
@@ -47,7 +48,7 @@ export default function RoundsPage() {
       const data = await roundsAPI.list();
       setRounds(data);
     } catch (error) {
-      console.error('Failed to load rounds:', error);
+      // Silently fail - user will see empty state
     } finally {
       setLoading(false);
     }
@@ -57,14 +58,15 @@ export default function RoundsPage() {
     if (!roundToClose) return;
     
     setIsClosing(true);
+    setErrorMessage("");
     try {
       await roundsAPI.close(roundToClose.id);
       await loadRounds(); // Reload the list
       setCloseDialogOpen(false);
       setRoundToClose(null);
     } catch (error) {
-      console.error('Failed to close round:', error);
-      alert('Failed to close round. Please try again.');
+      setErrorMessage(typeof error === 'string' ? error : 'Failed to close round. Please try again.');
+      setCloseDialogOpen(false);
     } finally {
       setIsClosing(false);
     }
@@ -86,6 +88,23 @@ export default function RoundsPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+          <X className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMessage("")}
+            className="text-destructive hover:text-destructive/80"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-4 md:gap-6">
         {rounds.map((round) => {

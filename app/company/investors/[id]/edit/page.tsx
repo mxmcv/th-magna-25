@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, User, Mail, Wallet } from "lucide-react";
+import { ArrowLeft, User, Mail, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, use } from "react";
@@ -17,6 +17,7 @@ export default function EditInvestorPage({ params }: { params: Promise<{ id: str
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -26,15 +27,14 @@ export default function EditInvestorPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     async function loadInvestor() {
       try {
-        const investor = await investorsAPI.get(id);
+        const investor: any = await investorsAPI.get(id);
         setFormData({
           name: investor.name,
           email: investor.email,
           walletAddress: investor.walletAddress || "",
         });
       } catch (error) {
-        console.error('Failed to load investor:', error);
-        alert('Failed to load investor data');
+        setErrorMessage(typeof error === 'string' ? error : 'Failed to load investor data');
       } finally {
         setLoading(false);
       }
@@ -45,16 +45,34 @@ export default function EditInvestorPage({ params }: { params: Promise<{ id: str
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage("");
+
+    // Client-side validation
+    if (!formData.name || formData.name.trim().length === 0) {
+      setErrorMessage('Please enter a valid name');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (formData.walletAddress && formData.walletAddress.trim().length > 0) {
+      // Basic wallet address validation (starts with 0x and has at least 42 characters)
+      if (!formData.walletAddress.startsWith('0x') || formData.walletAddress.length < 42) {
+        setErrorMessage('Please enter a valid Ethereum wallet address (must start with 0x and be at least 42 characters)');
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     try {
       await investorsAPI.update(id, {
-        name: formData.name,
-        walletAddress: formData.walletAddress || undefined,
+        name: formData.name.trim(),
+        walletAddress: formData.walletAddress && formData.walletAddress.trim().length > 0 
+          ? formData.walletAddress.trim() 
+          : undefined,
       });
       router.push(`/company/investors/${id}`);
     } catch (error) {
-      console.error('Failed to update investor:', error);
-      alert('Failed to update investor. Please try again.');
+      setErrorMessage(typeof error === 'string' ? error : 'Failed to update investor. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -85,6 +103,23 @@ export default function EditInvestorPage({ params }: { params: Promise<{ id: str
 
       <div className="max-w-3xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+              <X className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMessage("")}
+                className="text-destructive hover:text-destructive/80"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Personal Information Card */}
           <Card>
             <CardHeader>
@@ -117,7 +152,7 @@ export default function EditInvestorPage({ params }: { params: Promise<{ id: str
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
-                  Email Address <span className="text-destructive">*</span>
+                  Email Address
                 </Label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -128,13 +163,12 @@ export default function EditInvestorPage({ params }: { params: Promise<{ id: str
                     type="email"
                     placeholder="john.doe@example.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                    className="h-11 pl-10"
+                    disabled
+                    className="h-11 pl-10 bg-muted cursor-not-allowed"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Primary email for communications and notifications
+                  Email cannot be changed after account creation
                 </p>
               </div>
             </CardContent>

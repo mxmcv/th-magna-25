@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, LayoutDashboard, Users, CircleDollarSign, Home, LogOut } from "lucide-react";
+import { Building2, LayoutDashboard, Users, CircleDollarSign, Home, LogOut, FileText } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -71,17 +71,36 @@ export default function CompanyLayout({
                 Investors
               </Button>
             </Link>
+            <Link href="/company/audit">
+              <Button 
+                variant="ghost" 
+                className={`w-full justify-start ${
+                  pathname?.startsWith('/company/audit') 
+                    ? 'text-foreground bg-accent' 
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                }`}
+              >
+                <FileText className="w-5 h-5 mr-3" />
+                Audit Logs
+              </Button>
+            </Link>
           </nav>
         </div>
 
         <div className="mt-auto flex-shrink-0">
           <Separator />
           <div className="p-6 space-y-3">
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Company Portal</div>
-              <div className="text-sm font-medium">{user?.name || 'Loading...'}</div>
-              <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
-            </div>
+            {user ? (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Signed in as</div>
+                <div className="text-sm font-medium truncate">{user.email}</div>
+              </div>
+            ) : (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Company Portal</div>
+                <div className="text-sm font-medium">Not signed in</div>
+              </div>
+            )}
             <Button 
               variant="outline" 
               size="sm" 
@@ -100,23 +119,30 @@ export default function CompanyLayout({
         <div className="p-4 flex items-center justify-center border-b border-border">
           <div className="text-sm font-medium">Company Portal</div>
         </div>
-        <div className="flex">
-          <Link href="/company" className="flex-1">
-            <Button variant="ghost" className="w-full rounded-none h-12 text-xs">
-              <LayoutDashboard className="w-4 h-4 mr-2" />
-              Dashboard
+        <div className="flex overflow-x-auto">
+          <Link href="/company" className="flex-1 min-w-[90px]">
+            <Button variant="ghost" className="w-full rounded-none h-12 text-xs px-2">
+              <LayoutDashboard className="w-4 h-4 mr-1" />
+              <span className="hidden xs:inline">Dashboard</span>
+              <span className="xs:hidden">Home</span>
             </Button>
           </Link>
-          <Link href="/company/rounds" className="flex-1 border-l border-border">
-            <Button variant="ghost" className="w-full rounded-none h-12 text-xs">
-              <CircleDollarSign className="w-4 h-4 mr-2" />
+          <Link href="/company/rounds" className="flex-1 min-w-[90px] border-l border-border">
+            <Button variant="ghost" className="w-full rounded-none h-12 text-xs px-2">
+              <CircleDollarSign className="w-4 h-4 mr-1" />
               Rounds
             </Button>
           </Link>
-          <Link href="/company/investors" className="flex-1 border-l border-border">
-            <Button variant="ghost" className="w-full rounded-none h-12 text-xs">
-              <Users className="w-4 h-4 mr-2" />
+          <Link href="/company/investors" className="flex-1 min-w-[90px] border-l border-border">
+            <Button variant="ghost" className="w-full rounded-none h-12 text-xs px-2">
+              <Users className="w-4 h-4 mr-1" />
               Investors
+            </Button>
+          </Link>
+          <Link href="/company/audit" className="flex-1 min-w-[90px] border-l border-border">
+            <Button variant="ghost" className="w-full rounded-none h-12 text-xs px-2">
+              <FileText className="w-4 h-4 mr-1" />
+              Audit
             </Button>
           </Link>
         </div>

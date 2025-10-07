@@ -41,8 +41,8 @@ export default function InvestorDetailPage({ params }: { params: Promise<{ id: s
       try {
         const data = await investorsAPI.get(id);
         setInvestor(data);
-      } catch (error) {
-        console.error('Failed to load investor:', error);
+      } catch {
+        // Silently fail - user will see skeleton
       } finally {
         setLoading(false);
       }
@@ -311,7 +311,7 @@ export default function InvestorDetailPage({ params }: { params: Promise<{ id: s
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {investorContributions.map((contribution) => {
+                {investorContributions.map((contribution: any) => {
                   return (
                     <TableRow key={contribution.id}>
                       <TableCell className="font-medium">

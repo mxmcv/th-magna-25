@@ -2,7 +2,7 @@
 import { NextRequest } from 'next/server';
 import { successResponse, handleApiError } from '@/lib/api/responses';
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const response = successResponse({
       message: 'Logged out successfully',

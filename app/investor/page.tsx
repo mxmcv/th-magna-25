@@ -81,7 +81,7 @@ export default function InvestorDashboard() {
       setMyInvestments(Array.from(investmentMap.values()));
       setTotalInvested(total);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      // Silently fail - user will see empty state
     } finally {
       setLoading(false);
     }
@@ -136,8 +136,8 @@ export default function InvestorDashboard() {
       // Clear success message after 5 seconds
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (error) {
-      console.error('Failed to contribute:', error);
-      setErrorMessage('Failed to create contribution. Please try again.');
+      // Error is a string message from Promise.reject
+      setErrorMessage(typeof error === 'string' ? error : 'Failed to create contribution. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -149,6 +149,20 @@ export default function InvestorDashboard() {
         <h1 className="text-2xl md:text-3xl font-bold mb-2">Investor Dashboard</h1>
         <p className="text-sm md:text-base text-muted-foreground">Track your investments and discover new opportunities</p>
       </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-800">
+          <CheckCircle className="w-5 h-5" />
+          <p>{successMessage}</p>
+          <button
+            onClick={() => setSuccessMessage("")}
+            className="ml-auto text-green-600 hover:text-green-800"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mb-6 md:mb-8">
@@ -312,6 +326,18 @@ export default function InvestorDashboard() {
                             Enter your contribution amount and select your preferred stablecoin
                           </DialogDescription>
                         </DialogHeader>
+                        {errorMessage && (
+                          <div className="p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2 text-red-800 text-sm">
+                            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            <p className="flex-1">{errorMessage}</p>
+                            <button
+                              onClick={() => setErrorMessage("")}
+                              className="text-red-600 hover:text-red-800 flex-shrink-0"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
                         <div className="space-y-4 py-4">
                           <div className="space-y-2">
                             <Label htmlFor="amount">Contribution Amount (USD)</Label>
@@ -323,11 +349,18 @@ export default function InvestorDashboard() {
                               onChange={(e) => setContributionAmount(e.target.value)}
                             />
                             <p className="text-xs text-muted-foreground">
-                              Min: ${(round.minContribution / 1000).toFixed(1)}K • Max: $
-                              {myInvestment
-                                ? ((round.maxContribution - myInvestment.myContribution) / 1000).toFixed(1)
-                                : (round.maxContribution / 1000).toFixed(1)}
-                              K
+                              {myInvestment ? (
+                                <>
+                                  You can add up to $
+                                  {((round.maxContribution - myInvestment.myContribution) / 1000).toFixed(1)}
+                                  K more
+                                </>
+                              ) : (
+                                <>
+                                  Min: ${(round.minContribution / 1000).toFixed(1)}K • Max: $
+                                  {(round.maxContribution / 1000).toFixed(1)}K
+                                </>
+                              )}
                             </p>
                           </div>
                           <div className="space-y-2">
@@ -348,9 +381,14 @@ export default function InvestorDashboard() {
                         </div>
                         <DialogFooter>
                           <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
+                            <Button variant="outline" ref={dialogCloseRef}>Cancel</Button>
                           </DialogClose>
-                          <Button onClick={handleContribute}>Confirm Contribution</Button>
+                          <Button 
+                            onClick={() => handleContribute().catch(() => {})}
+                            disabled={isSubmitting}
+                          >
+                            {isSubmitting ? "Processing..." : "Confirm Contribution"}
+                          </Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>

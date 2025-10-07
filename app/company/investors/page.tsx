@@ -66,22 +66,29 @@ export default function InvestorsPage() {
     try {
       const data = await investorsAPI.list();
       setInvestors(data as any[]);
-    } catch (error) {
-      console.error('Failed to load investors:', error);
+    } catch {
+      // Silently fail - user will see empty state
     } finally {
       setLoading(false);
     }
   }
 
-  const handleRemoveInvestor = () => {
+  const handleRemoveInvestor = async () => {
+    if (!investorToRemove) return;
+    
     setIsRemoving(true);
-    console.log("Removing investor:", investorToRemove?.id);
-    // Note: Implement delete endpoint if needed
-    setTimeout(() => {
-      setIsRemoving(false);
+    try {
+      await investorsAPI.delete(investorToRemove.id);
+      // Reload the investors list
+      await loadInvestors();
       setRemoveDialogOpen(false);
       setInvestorToRemove(null);
-    }, 1000);
+    } catch (error) {
+      // Show error in UI (could add error state if needed)
+      console.error('Failed to remove investor:', error);
+    } finally {
+      setIsRemoving(false);
+    }
   };
 
   if (loading) return <ListViewSkeleton />;
@@ -176,7 +183,7 @@ export default function InvestorsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {investors.filter((i) => i.status === "active").length}
+              {investors.filter((i) => i.status?.toUpperCase() === "ACTIVE").length}
             </div>
           </CardContent>
         </Card>
