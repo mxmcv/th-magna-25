@@ -1,10 +1,9 @@
-// Date utility functions
-// Reusable date calculation and formatting functions
+// date utilities - handling time-sensitive round logic
+// rounds up days remaining so "less than 1 day" shows as "1 day" instead of 0
 
 /**
- * Calculates days remaining between now and a future date
- * @param endDate - The end date
- * @returns Number of days remaining (rounded up)
+ * calculates days left in a round
+ * used for urgency indicators in the UI
  */
 export function calculateDaysRemaining(endDate: string | Date): number {
   const end = typeof endDate === 'string' ? new Date(endDate) : endDate;

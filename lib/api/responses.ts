@@ -1,5 +1,6 @@
-// API response utilities
-// Standardized response formats for consistency
+// api response utilities - standardized format across all endpoints
+// every response has { success, data/error, metadata } structure
+// makes frontend error handling predictable and consistent
 
 import { NextResponse } from 'next/server';
 
@@ -62,7 +63,8 @@ export function errorResponse(
 }
 
 /**
- * Standard error codes
+ * error code catalog - organized by http status
+ * helps frontend show contextual messages and handle retries
  */
 export const ErrorCodes = {
   // Auth errors (401)
@@ -109,7 +111,9 @@ export class ApiError extends Error {
 }
 
 /**
- * Handle API errors consistently
+ * centralized error handler - catches expected and unexpected errors
+ * sanitizes messages in production to avoid leaking implementation details
+ * special case for prisma unique violations to give better feedback
  */
 export function handleApiError(error: unknown): NextResponse<ApiResponse> {
   console.error('API Error:', error);
@@ -124,7 +128,8 @@ export function handleApiError(error: unknown): NextResponse<ApiResponse> {
   }
 
   if (error instanceof Error) {
-    // Check for Prisma errors
+    // detect prisma unique constraint violations
+    // common when trying to create duplicate emails or invitation pairs
     if (error.message.includes('Unique constraint')) {
       return errorResponse(
         'A record with this information already exists',

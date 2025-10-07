@@ -1,4 +1,6 @@
-// Accept Invitation API
+// invitation acceptance - public endpoint for investor onboarding
+// validates token, sets password, activates investor, auto-logs in
+// critical flow: this is how investors get into the system
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
@@ -24,7 +26,7 @@ export async function POST(request: NextRequest) {
       throw new ApiError('Password must be at least 6 characters', 400, ErrorCodes.INVALID_INPUT);
     }
 
-    // Find invitation by token
+    // find invitation - includes investor and round for context
     const invitation = await prisma.invitation.findUnique({
       where: { token: data.token },
       include: {
@@ -42,17 +44,17 @@ export async function POST(request: NextRequest) {
       throw new ApiError('Invalid invitation token', 404, ErrorCodes.NOT_FOUND);
     }
 
-    // Check if expired
+    // validate expiration - 7 day window from creation
     if (isInvitationExpired(invitation.expiresAt)) {
       throw new ApiError('Invitation has expired', 400, ErrorCodes.INVALID_INPUT);
     }
 
-    // Check if already accepted
+    // prevent double-acceptance
     if (invitation.status === 'ACCEPTED') {
       throw new ApiError('Invitation has already been accepted', 400, ErrorCodes.INVALID_INPUT);
     }
 
-    // Hash password and update investor
+    // set password and activate investor account
     const hashedPassword = await hashPassword(data.password);
     
     const updatedInvestor = await prisma.investor.update({

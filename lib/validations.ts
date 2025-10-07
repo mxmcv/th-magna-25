@@ -1,14 +1,11 @@
-// Validation utilities
-// Centralized validation functions for forms and data
+// validation utilities - shared between client and server
+// keeping this DRY means validation rules stay consistent across both layers
 
 import { VALIDATION } from './constants';
 
 /**
- * Validates a contribution amount
- * @param amount - The contribution amount to validate
- * @param minContribution - Minimum allowed contribution
- * @param maxContribution - Maximum allowed contribution
- * @returns Object with isValid boolean and error message if invalid
+ * validates contribution amount against round limits
+ * used in both UI forms and API handlers to prevent invalid submissions
  */
 export function validateContribution(
   amount: number,

@@ -55,12 +55,13 @@ export async function POST(request: NextRequest) {
     const protocol = request.headers.get('x-forwarded-proto') || 'https';
     const baseUrl = `${protocol}://${host}`;
 
-    // Create invitations for each investor-round combination
+    // bulk invitation creation - handles both single and multiple investors/rounds
+    // respects the unique constraint on (roundId, investorId) - returns existing links if already sent
     const allInvitations: any[] = [];
     
     for (const investorId of investorIds) {
       for (const roundId of data.roundIds) {
-        // Check if invitation already exists
+        // check if this exact investor/round pair already has an invite
         const existing = await prisma.invitation.findUnique({
           where: {
             roundId_investorId: {

@@ -1,13 +1,11 @@
-// Formatting utilities
-// Reusable functions for consistent data formatting across the application
+// formatting utilities - consistent display across all UI components
+// using Intl API for proper locale support, keeps formatting logic centralized
 
 import { CURRENCY } from './constants';
 
 /**
- * Formats a number as currency (USD)
- * @param amount - The numeric amount to format
- * @param options - Optional formatting options
- * @returns Formatted currency string
+ * formats numbers as USD currency
+ * compact mode gives us readable abbreviations like $1.5M for dashboards
  */
 export function formatCurrency(
   amount: number,

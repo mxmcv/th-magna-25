@@ -1,5 +1,9 @@
 'use client';
 
+// auth context - global auth state accessible to all client components
+// wraps the app in providers.tsx so session persists across navigation
+// refreshAuth() is key for updating UI after invitation acceptance
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { UserType } from './types';
 import { auth } from './api-client';
@@ -28,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // check session on mount - auto-login if valid cookie exists
   useEffect(() => {
     checkAuth();
   }, []);

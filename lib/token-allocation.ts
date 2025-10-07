@@ -1,6 +1,6 @@
-// token allocation calculator - my "one extra feature"
-// bridges fundraising data to magna's token distribution platform
-// calculates pro-rata allocations and exports in magna-compatible formats
+// token allocation - the extra feature that connects to magna's core business
+// takes fundraising contributions and calculates pro-rata token distribution
+// exports match the format magna's vesting platform expects for import
 
 export interface TokenAllocation {
   investorId: string;
@@ -27,8 +27,8 @@ export interface AllocationReport {
   generatedAt: Date;
 }
 
-// simple math but important to get right - tokens = contribution / price
-// percentage is relative to total raised in the round
+// core allocation math: each investor gets tokens proportional to their contribution
+// keeping this pure (no side effects) makes it easy to test and reason about
 export function calculateTokenAllocations(
   contributions: Array<{
     investorId: string;
@@ -63,8 +63,8 @@ export function calculateTokenAllocations(
   });
 }
 
-// csv format for magna's vesting platform import
-// based on standard vesting spreadsheet formats i've seen
+// CSV export for magna's vesting system
+// includes all the fields they'd need: investor details, amounts, vesting schedule
 export function exportToMagnaCSV(report: AllocationReport): string {
   const headers = [
     'Investor Name',

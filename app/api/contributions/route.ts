@@ -132,7 +132,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check existing contributions from this investor
+    // cumulative max enforcement - investors can contribute multiple times
+    // but their total across all contributions can't exceed the round's max
     const existingContributions = await prisma.contribution.findMany({
       where: {
         roundId: data.roundId,

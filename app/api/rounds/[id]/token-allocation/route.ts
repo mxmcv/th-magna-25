@@ -66,7 +66,8 @@ export async function POST(
       throw new ApiError('No confirmed contributions in this round', 400, ErrorCodes.VALIDATION_ERROR);
     }
 
-    // Group contributions by investor
+    // group contributions by investor - handles multiple contributions per person
+    // Map ensures one entry per investor with summed amounts for correct allocation
     const investorContributions = new Map();
     round.contributions.forEach((contrib) => {
       const existing = investorContributions.get(contrib.investorId);
