@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, DollarSign, Calendar, Coins } from "lucide-react";
+import { ArrowLeft, DollarSign, Calendar, Coins, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { rounds as roundsAPI } from "@/lib/api-client";
@@ -28,30 +28,117 @@ export default function NewRoundPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage("");
+
+    // Client-side validation
+    const target = parseFloat(formData.target);
+    const minContribution = parseFloat(formData.minContribution);
+    const maxContribution = parseFloat(formData.maxContribution);
+    const selectedTokens = Object.keys(formData.acceptedTokens).filter(
+      (token) => formData.acceptedTokens[token as keyof typeof formData.acceptedTokens]
+    );
+
+    if (isNaN(target) || target <= 0) {
+      setErrorMessage('Please enter a valid fundraising target greater than 0');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (isNaN(minContribution) || minContribution <= 0) {
+      setErrorMessage('Please enter a valid minimum contribution greater than 0');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (isNaN(maxContribution) || maxContribution <= 0) {
+      setErrorMessage('Please enter a valid maximum contribution greater than 0');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (minContribution > maxContribution) {
+      setErrorMessage('Minimum contribution cannot be greater than maximum contribution');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (maxContribution > target) {
+      setErrorMessage('Maximum contribution cannot exceed the fundraising target');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (selectedTokens.length === 0) {
+      setErrorMessage('Please select at least one accepted stablecoin');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate dates
+    if (!formData.startDate || !formData.endDate) {
+      setErrorMessage('Please select both start and end dates');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const startDate = new Date(formData.startDate);
+    const endDate = new Date(formData.endDate);
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0); // Reset time for comparison
+
+    // Check if dates are valid
+    if (isNaN(startDate.getTime())) {
+      setErrorMessage('Please enter a valid start date');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (isNaN(endDate.getTime())) {
+      setErrorMessage('Please enter a valid end date');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Check year range (must be between 1900 and 2100)
+    if (startDate.getFullYear() < 1900 || startDate.getFullYear() > 2100) {
+      setErrorMessage('Start date year must be between 1900 and 2100');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (endDate.getFullYear() < 1900 || endDate.getFullYear() > 2100) {
+      setErrorMessage('End date year must be between 1900 and 2100');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (startDate >= endDate) {
+      setErrorMessage('End date must be after start date');
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       await roundsAPI.create({
         name: formData.name,
         description: formData.description || undefined,
-        target: parseFloat(formData.target),
-        minContribution: parseFloat(formData.minContribution),
-        maxContribution: parseFloat(formData.maxContribution),
-        acceptedTokens: Object.keys(formData.acceptedTokens).filter(
-          (token) => formData.acceptedTokens[token as keyof typeof formData.acceptedTokens]
-        ),
+        target,
+        minContribution,
+        maxContribution,
+        acceptedTokens: selectedTokens,
         startDate: formData.startDate,
         endDate: formData.endDate,
         status: 'ACTIVE',
       });
       router.push('/company/rounds');
     } catch (error) {
-      console.error('Failed to create round:', error);
-      alert('Failed to create round. Please try again.');
+      setErrorMessage(typeof error === 'string' ? error : 'Failed to create round. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -72,6 +159,23 @@ export default function NewRoundPage() {
 
       <div className="max-w-3xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+              <X className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMessage("")}
+                className="text-destructive hover:text-destructive/80"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Basic Information */}
           <Card>
             <CardHeader>
@@ -227,9 +331,14 @@ export default function NewRoundPage() {
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    min="1900-01-01"
+                    max="2100-12-31"
                     required
                     className="h-11"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Must be between 1900 and 2100
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endDate" className="text-sm font-medium">
@@ -240,9 +349,14 @@ export default function NewRoundPage() {
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    min="1900-01-01"
+                    max="2100-12-31"
                     required
                     className="h-11"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Must be after start date and between 1900 and 2100
+                  </p>
                 </div>
               </div>
             </CardContent>

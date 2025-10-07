@@ -10,6 +10,7 @@ import {
 import { verifyPassword, createSessionToken } from '@/lib/api/auth';
 import { parseRequestBody } from '@/lib/api/validation';
 import { validateEmail } from '@/lib/validations';
+import { auditHelpers } from '@/lib/api/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,8 +27,8 @@ export async function POST(request: NextRequest) {
     const email = data.email.toLowerCase().trim();
     const userType = data.userType || 'company'; // Default to company
 
-    let user: any;
-    let userData: any;
+    let user: { id: string; email: string; password: string; name: string } | null;
+    let userData: { id: string; email: string; name: string };
 
     if (userType === 'company') {
       user = await prisma.company.findUnique({
@@ -80,6 +81,14 @@ export async function POST(request: NextRequest) {
 
     // Create session token
     const token = createSessionToken(user.id, userType);
+
+    // Audit log for successful login
+    await auditHelpers.logUserLogin(user.id, userType as 'company' | 'investor', {
+      email: user.email,
+      timestamp: new Date().toISOString(),
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+    });
 
     // Set session cookie
     const response = successResponse({

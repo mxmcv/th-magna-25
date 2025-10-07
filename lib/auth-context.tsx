@@ -1,22 +1,22 @@
 'use client';
 
-// Authentication Context
-// Manages user session across the application
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import type { UserType } from './types';
 import { auth } from './api-client';
 
 interface User {
   id: string;
   email: string;
-  name: string;
-  userType: 'company' | 'investor';
+  name?: string;
+  userType: UserType;
+  walletAddress?: string;
+  status?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string, userType?: 'company' | 'investor') => Promise<void>;
+  login: (email: string, password: string, userType?: UserType) => Promise<void>;
   logout: () => Promise<void>;
   register: (email: string, name: string, password: string) => Promise<void>;
 }
@@ -27,25 +27,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
   useEffect(() => {
     checkAuth();
   }, []);
 
   async function checkAuth() {
     try {
-      const response: any = await auth.getCurrentUser();
-      setUser(response.user);
-    } catch (error) {
+      const response: any = await auth.me();
+      // The API returns { user: {...} }
+      setUser(response.user || response);
+    } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
   }
 
-  async function login(email: string, password: string, userType: 'company' | 'investor' = 'company') {
-    const response: any = await auth.login(email, password, userType);
-    setUser(response.user);
+  async function login(email: string, password: string, userType: UserType = 'company') {
+    // Pass as object to match API client signature
+    const response: any = await auth.login({ email, password, userType });
+    // The login response includes the user data
+    setUser(response.user || response);
   }
 
   async function logout() {
@@ -54,8 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(email: string, name: string, password: string) {
-    const response: any = await auth.register(email, name, password);
-    setUser(response.company);
+    // Register the company
+    await auth.register({ email, name, password });
+    // After registration, login to get session
+    await login(email, password, 'company');
   }
 
   return (
@@ -72,4 +76,3 @@ export function useAuth() {
   }
   return context;
 }
-

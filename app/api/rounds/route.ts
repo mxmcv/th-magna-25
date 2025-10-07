@@ -1,4 +1,4 @@
-// Rounds API - List and Create
+// rounds api - handles listing and creating fundraising rounds
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { successResponse, handleApiError } from '@/lib/api/responses';
@@ -6,7 +6,8 @@ import { requireAuth, requireCompanyAuth } from '@/lib/api/auth';
 import { validateRoundData, parseRequestBody } from '@/lib/api/validation';
 import { auditHelpers } from '@/lib/api/audit';
 
-// GET /api/rounds - List rounds (companies see their own, investors see invited rounds)
+// key design decision: investors only see rounds they're invited to
+// prevents them from seeing all rounds across all companies
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth(request);
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     let rounds;
 
     if (session.userType === 'company') {
-      // Companies see only their rounds
+      // companies see all their rounds
       rounds = await prisma.round.findMany({
         where: { companyId: session.userId },
         include: {
@@ -30,7 +31,8 @@ export async function GET(request: NextRequest) {
         },
       });
     } else {
-      // Investors only see rounds they have invitations for
+      // investors only see rounds they have invitations for
+      // prevents data leakage between companies
       const invitations = await prisma.invitation.findMany({
         where: {
           investorId: session.userId,
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
       rounds = await prisma.round.findMany({
         where: {
           id: { in: roundIds },
-          status: { in: ['ACTIVE', 'CLOSED', 'COMPLETED'] }, // Show active and closed rounds
+          status: { in: ['ACTIVE', 'CLOSED', 'COMPLETED'] },
         },
         include: {
           _count: {
@@ -62,56 +64,35 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Calculate participants for each round
-    const roundsWithStats = await Promise.all(
-      rounds.map(async (round) => {
-        const participants = await prisma.contribution.groupBy({
-          by: ['investorId'],
-          where: {
-            roundId: round.id,
-            status: 'CONFIRMED',
-          },
-        });
-
-        return {
-          ...round,
-          participants: participants.length,
-        };
-      })
-    );
-
-    return successResponse(roundsWithStats);
+    return successResponse(rounds);
   } catch (error) {
     return handleApiError(error);
   }
 }
 
-// POST /api/rounds - Create a new round
+// only companies can create rounds
 export async function POST(request: NextRequest) {
   try {
     const company = await requireCompanyAuth(request);
     const data = await parseRequestBody(request);
-    
-    // Validate and get clean data
-    const validated = validateRoundData({
-      ...data,
-      companyId: company.id,
-    });
+
+    // validate before hitting the database
+    const validatedData = validateRoundData(data);
 
     const round = await prisma.round.create({
       data: {
-        ...validated,
-        status: data.status || 'DRAFT',
+        ...validatedData,
+        companyId: company.id,
         raised: 0,
+        status: 'ACTIVE',
       },
     });
 
-    // Audit log
+    // audit all round creation for compliance
     await auditHelpers.logRoundCreated(round.id, company.id, round);
 
-    return successResponse(round, 201);
+    return successResponse(round);
   } catch (error) {
     return handleApiError(error);
   }
 }
-

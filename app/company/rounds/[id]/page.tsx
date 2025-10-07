@@ -1,5 +1,4 @@
 "use client";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -26,6 +25,8 @@ import {
   UserPlus,
   XCircle,
   MoreVertical,
+  X,
+  Coins,
 } from "lucide-react";
 import Link from "next/link";
 import { use, useState, useEffect } from "react";
@@ -50,29 +51,26 @@ import {
 import { rounds as roundsAPI } from "@/lib/api-client";
 import { DetailViewSkeleton } from "@/components/skeletons";
 import { useRouter } from "next/navigation";
-
 export default function RoundDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [round, setRound] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
-
+  const [errorMessage, setErrorMessage] = useState("");
   useEffect(() => {
     loadRound();
   }, [id]);
-
   async function loadRound() {
     try {
       const data = await roundsAPI.get(id);
       setRound(data);
-    } catch (error) {
-      console.error('Failed to load round:', error);
-    } finally {
+      } catch (error) {
+        // Silently fail - user will see skeleton
+      } finally {
       setLoading(false);
     }
   }
-
   if (loading) return <DetailViewSkeleton />;
   if (!round) {
     return (
@@ -84,13 +82,13 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
       </div>
     );
   }
-
   const contributions = round.contributions || [];
   const progress = round.target > 0 ? (round.raised / round.target) * 100 : 0;
   const daysRemaining = Math.ceil(
     (new Date(round.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
   );
-
+  const timeDisplay = daysRemaining > 0 ? `${daysRemaining}` : round.status === "COMPLETED" || round.status === "CLOSED" ? "Ended" : "Expired";
+  const timeLabel = daysRemaining > 0 ? "Days remaining" : "";
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "CONFIRMED":
@@ -111,21 +109,35 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
-
   const handleCloseRound = async () => {
     setIsClosing(true);
+    setErrorMessage("");
     try {
       await roundsAPI.close(id);
       router.push('/company/rounds');
     } catch (error) {
-      console.error('Failed to close round:', error);
-      alert('Failed to close round. Please try again.');
+      setErrorMessage(typeof error === 'string' ? error : 'Failed to close round. Please try again.');
       setIsClosing(false);
     }
   };
-
   return (
     <div className="p-4 md:p-6 lg:p-8">
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+          <X className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMessage("")}
+            className="text-destructive hover:text-destructive/80"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="mb-6">
         <Link href="/company/rounds">
@@ -134,7 +146,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
             Back to Rounds
           </Button>
         </Link>
-
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -158,7 +169,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
                 Invite Investors
               </Button>
             </Link>
-            
             {/* Actions Dropdown */}
             <AlertDialog>
               <DropdownMenu>
@@ -168,6 +178,13 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/company/rounds/${id}/token-allocation`} className="flex items-center cursor-pointer">
+                      <Coins className="w-4 h-4 mr-2" />
+                      Token Allocation
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href={`/company/rounds/${id}/edit`} className="flex items-center cursor-pointer">
                       <Edit className="w-4 h-4 mr-2" />
@@ -186,7 +203,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
                   </AlertDialogTrigger>
                 </DropdownMenuContent>
               </DropdownMenu>
-              
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Close this round?</AlertDialogTitle>
@@ -219,7 +235,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       </div>
-
       {/* Key Metrics */}
       <div className="grid gap-4 md:gap-6 grid-cols-2 md:grid-cols-4 mb-6 md:mb-8">
         <Card>
@@ -240,7 +255,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -257,7 +271,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
             </p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -272,7 +285,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
             <p className="text-xs text-muted-foreground mt-1">Active investors</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -283,12 +295,11 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl md:text-3xl font-bold">{daysRemaining}</div>
-            <p className="text-xs text-muted-foreground mt-1">Days remaining</p>
+            <div className="text-2xl md:text-3xl font-bold">{timeDisplay}</div>
+            {timeLabel && <p className="text-xs text-muted-foreground mt-1">{timeLabel}</p>}
           </CardContent>
         </Card>
       </div>
-
       {/* Progress Section */}
       <Card className="mb-6 md:mb-8">
         <CardHeader>
@@ -305,9 +316,7 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
               </span>
             </div>
           </div>
-
           <Separator />
-
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
               <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -350,7 +359,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
               </div>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Accepted Tokens:</span>
             <div className="flex gap-2">
@@ -363,7 +371,6 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
           </div>
         </CardContent>
       </Card>
-
       {/* Contributions Table */}
       <Card>
         <CardHeader>
@@ -421,4 +428,3 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
     </div>
   );
 }
-

@@ -97,3 +97,63 @@ export function isEndingSoon(endDate: string | Date): boolean {
   return daysRemaining > 0 && daysRemaining <= 7;
 }
 
+/**
+ * Formats a date as a relative time string (e.g., "2 hours ago", "just now")
+ * @param date - The date to format
+ * @returns Human-readable relative time string
+ */
+export function formatRelativeTime(date: string | Date): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const now = new Date();
+  const diffInMs = now.getTime() - dateObj.getTime();
+  const diffInSeconds = Math.floor(diffInMs / 1000);
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
+
+  if (diffInSeconds < 10) {
+    return 'just now';
+  }
+
+  if (diffInSeconds < 60) {
+    return `${diffInSeconds} seconds ago`;
+  }
+
+  if (diffInMinutes === 1) {
+    return '1 minute ago';
+  }
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minutes ago`;
+  }
+
+  if (diffInHours === 1) {
+    return '1 hour ago';
+  }
+
+  if (diffInHours < 24) {
+    return `${diffInHours} hours ago`;
+  }
+
+  if (diffInDays === 1) {
+    return '1 day ago';
+  }
+
+  if (diffInDays < 7) {
+    return `${diffInDays} days ago`;
+  }
+
+  if (diffInDays < 30) {
+    const weeks = Math.floor(diffInDays / 7);
+    return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+  }
+
+  if (diffInDays < 365) {
+    const months = Math.floor(diffInDays / 30);
+    return months === 1 ? '1 month ago' : `${months} months ago`;
+  }
+
+  const years = Math.floor(diffInDays / 365);
+  return years === 1 ? '1 year ago' : `${years} years ago`;
+}
+

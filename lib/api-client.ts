@@ -1,248 +1,221 @@
-// API Client for front-end
-// Provides type-safe methods to call backend APIs
+/**
+ * API Client
+ * Type-safe API client for all backend endpoints
+ * Provides a consistent interface for making API requests
+ */
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: {
-    message: string;
-    code?: string;
-    details?: any;
-  };
-}
+import type {
+  Round,
+  Investor,
+  Contribution,
+  CreateRoundRequest,
+  UpdateRoundRequest,
+  CreateInvestorRequest,
+  UpdateInvestorRequest,
+  CreateContributionRequest,
+  InvitationRequest,
+  LoginRequest,
+  RegisterRequest,
+  AuthSession,
+} from './types';
 
+/**
+ * Base API client class with common request handling
+ */
 class ApiClient {
   private baseUrl: string;
 
-  constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || '';
+  constructor(baseUrl: string = '') {
+    this.baseUrl = baseUrl;
   }
 
+  /**
+   * Makes an API request and handles errors consistently
+   * @param endpoint - The API endpoint path
+   * @param options - Fetch options
+   * @returns Parsed JSON response
+   * @throws Error message string for handled errors
+   */
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      credentials: 'include', // Important for cookies
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        credentials: 'include', // Important for cookies
+      });
 
-    const data: ApiResponse<T> = await response.json();
+      const data = await response.json();
 
-    if (!data.success) {
-      throw new Error(data.error?.message || 'An error occurred');
+      if (!data.success) {
+        // Return rejected promise with just the message
+        // This prevents Next.js error overlay from triggering
+        return Promise.reject(data.error?.message || 'An error occurred');
+      }
+
+      return data.data as T;
+    } catch (error) {
+      // Network errors or JSON parse errors
+      if (error instanceof Error) {
+        return Promise.reject(error.message);
+      }
+      return Promise.reject(String(error));
     }
-
-    return data.data as T;
   }
 
-  // ============================================================================
-  // AUTH
-  // ============================================================================
+  /**
+   * GET request helper
+   */
+  private get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' });
+  }
 
-  async register(email: string, name: string, password: string) {
-    return this.request('/api/auth/register', {
+  /**
+   * POST request helper
+   */
+  private post<T>(endpoint: string, data?: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify({ email, name, password }),
+      body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async login(email: string, password: string, userType: 'company' | 'investor' = 'company') {
-    return this.request('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password, userType }),
-    });
-  }
-
-  async logout() {
-    return this.request('/api/auth/logout', {
-      method: 'POST',
-    });
-  }
-
-  async getCurrentUser() {
-    return this.request('/api/auth/me');
-  }
-
-  // ============================================================================
-  // ROUNDS
-  // ============================================================================
-
-  async getRounds() {
-    return this.request('/api/rounds');
-  }
-
-  async getRound(id: string) {
-    return this.request(`/api/rounds/${id}`);
-  }
-
-  async createRound(data: {
-    name: string;
-    description?: string;
-    target: number;
-    minContribution: number;
-    maxContribution: number;
-    acceptedTokens: string[];
-    startDate: string;
-    endDate: string;
-    status?: string;
-  }) {
-    return this.request('/api/rounds', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async updateRound(id: string, data: Partial<{
-    name: string;
-    description: string;
-    target: number;
-    minContribution: number;
-    maxContribution: number;
-    acceptedTokens: string[];
-    startDate: string;
-    endDate: string;
-    status: string;
-  }>) {
-    return this.request(`/api/rounds/${id}`, {
+  /**
+   * PATCH request helper
+   */
+  private patch<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteRound(id: string) {
-    return this.request(`/api/rounds/${id}`, {
-      method: 'DELETE',
-    });
+  /**
+   * DELETE request helper
+   */
+  private delete<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
-  async closeRound(id: string) {
-    return this.request(`/api/rounds/${id}/close`, {
-      method: 'POST',
-    });
-  }
+  // Authentication endpoints
+  auth = {
+    /**
+     * Login to the platform
+     */
+    login: (data: LoginRequest) => this.post<AuthSession>('/api/auth/login', data),
+    
+    /**
+     * Register a new company account
+     */
+    register: (data: RegisterRequest) => this.post<{ userId: string }>('/api/auth/register', data),
+    
+    /**
+     * Logout from the platform
+     */
+    logout: () => this.post<{ success: boolean }>('/api/auth/logout'),
+    
+    /**
+     * Get current user session
+     */
+    me: () => this.get<AuthSession>('/api/auth/me'),
+  };
 
-  // ============================================================================
-  // INVESTORS
-  // ============================================================================
+  // Rounds endpoints
+  rounds = {
+    /**
+     * List all rounds (filtered by user type)
+     */
+    list: () => this.get<Round[]>('/api/rounds'),
+    
+    /**
+     * Get a specific round by ID
+     */
+    get: (id: string) => this.get<Round>(`/api/rounds/${id}`),
+    
+    /**
+     * Create a new fundraising round
+     */
+    create: (data: CreateRoundRequest) => this.post<Round>('/api/rounds', data),
+    
+    /**
+     * Update an existing round
+     */
+    update: (id: string, data: UpdateRoundRequest) => this.patch<Round>(`/api/rounds/${id}`, data),
+    
+    /**
+     * Delete a round
+     */
+    delete: (id: string) => this.delete<{ success: boolean }>(`/api/rounds/${id}`),
+    
+    /**
+     * Close a fundraising round
+     */
+    close: (id: string) => this.post<Round>(`/api/rounds/${id}/close`),
+  };
 
-  async getInvestors() {
-    return this.request('/api/investors');
-  }
+  // Investors endpoints
+  investors = {
+    /**
+     * List all investors
+     */
+    list: () => this.get<Investor[]>('/api/investors'),
+    
+    /**
+     * Get a specific investor by ID
+     */
+    get: (id: string) => this.get<Investor>(`/api/investors/${id}`),
+    
+    /**
+     * Create a new investor
+     */
+    create: (data: CreateInvestorRequest) => this.post<Investor>('/api/investors', data),
+    
+    /**
+     * Update an existing investor
+     */
+    update: (id: string, data: UpdateInvestorRequest) => this.patch<Investor>(`/api/investors/${id}`, data),
+    
+    /**
+     * Delete an investor
+     */
+    delete: (id: string) => this.delete<{ message: string }>(`/api/investors/${id}`),
+  };
 
-  async getInvestor(id: string) {
-    return this.request(`/api/investors/${id}`);
-  }
+  // Contributions endpoints
+  contributions = {
+    /**
+     * List all contributions (filtered by user type)
+     */
+    list: () => this.get<Contribution[]>('/api/contributions'),
+    
+    /**
+     * Create a new contribution
+     */
+    create: (data: CreateContributionRequest) => this.post<Contribution>('/api/contributions', data),
+    
+    /**
+     * Confirm a contribution (company only)
+     */
+    confirm: (id: string) => this.post<Contribution>(`/api/contributions/${id}/confirm`),
+  };
 
-  async createInvestor(data: {
-    email: string;
-    name: string;
-    walletAddress?: string;
-  }) {
-    return this.request('/api/investors', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async updateInvestor(id: string, data: Partial<{
-    name: string;
-    email: string;
-    walletAddress: string;
-    status: string;
-  }>) {
-    return this.request(`/api/investors/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
-
-  // ============================================================================
-  // INVITATIONS
-  // ============================================================================
-
-  async sendInvitations(roundId: string, investorIds: string[]) {
-    return this.request('/api/invitations', {
-      method: 'POST',
-      body: JSON.stringify({ roundId, investorIds }),
-    });
-  }
-
-  // ============================================================================
-  // CONTRIBUTIONS
-  // ============================================================================
-
-  async getContributions() {
-    return this.request('/api/contributions');
-  }
-
-  async createContribution(data: {
-    roundId: string;
-    amount: number;
-    token: string;
-    walletAddress?: string;
-  }) {
-    return this.request('/api/contributions', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async confirmContribution(id: string) {
-    return this.request(`/api/contributions/${id}/confirm`, {
-      method: 'POST',
-    });
-  }
+  // Invitations endpoints
+  invitations = {
+    /**
+     * Send invitation(s) to investor(s)
+     */
+    send: (data: InvitationRequest) => this.post<{ invitations: Array<{ id: string; invitationLink: string }> }>('/api/invitations', data),
+  };
 }
 
 // Export singleton instance
-export const apiClient = new ApiClient();
+const apiClient = new ApiClient();
 
-// Export convenience functions
-export const auth = {
-  register: (email: string, name: string, password: string) =>
-    apiClient.register(email, name, password),
-  login: (email: string, password: string, userType?: 'company' | 'investor') =>
-    apiClient.login(email, password, userType),
-  logout: () => apiClient.logout(),
-  getCurrentUser: () => apiClient.getCurrentUser(),
-};
-
-export const rounds = {
-  list: () => apiClient.getRounds(),
-  get: (id: string) => apiClient.getRound(id),
-  create: (data: Parameters<typeof apiClient.createRound>[0]) =>
-    apiClient.createRound(data),
-  update: (id: string, data: Parameters<typeof apiClient.updateRound>[1]) =>
-    apiClient.updateRound(id, data),
-  delete: (id: string) => apiClient.deleteRound(id),
-  close: (id: string) => apiClient.closeRound(id),
-};
-
-export const investors = {
-  list: () => apiClient.getInvestors(),
-  get: (id: string) => apiClient.getInvestor(id),
-  create: (data: Parameters<typeof apiClient.createInvestor>[0]) =>
-    apiClient.createInvestor(data),
-  update: (id: string, data: Parameters<typeof apiClient.updateInvestor>[1]) =>
-    apiClient.updateInvestor(id, data),
-};
-
-export const invitations = {
-  send: (roundId: string, investorIds: string[]) =>
-    apiClient.sendInvitations(roundId, investorIds),
-};
-
-export const contributions = {
-  list: () => apiClient.getContributions(),
-  create: (data: Parameters<typeof apiClient.createContribution>[0]) =>
-    apiClient.createContribution(data),
-  confirm: (id: string) => apiClient.confirmContribution(id),
-};
-
+export const { auth, rounds, investors, contributions, invitations } = apiClient;

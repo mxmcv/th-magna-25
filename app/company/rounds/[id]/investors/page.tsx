@@ -40,7 +40,7 @@ export default function RoundInvestorsPage({ params }: { params: Promise<{ id: s
         const data = await roundsAPI.get(id);
         setRound(data);
       } catch (error) {
-        console.error('Failed to load round:', error);
+        // Silently fail - user will see skeleton
       } finally {
         setLoading(false);
       }
@@ -242,9 +242,13 @@ export default function RoundInvestorsPage({ params }: { params: Promise<{ id: s
                             onClick={() => router.push("/company/investors/invite")}
                           >
                             <Mail className="w-4 h-4 mr-2" />
-                            Send Message
+                            Send Invitation
                           </DropdownMenuItem>
-                          <DropdownMenuItem>View Contributions</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => router.push(`/company/investors/${investor.id}`)}
+                          >
+                            View Contributions
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

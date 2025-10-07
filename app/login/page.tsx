@@ -120,16 +120,11 @@ export default function LoginPage() {
 
                   <div className="text-center text-sm">
                     <p className="text-muted-foreground">
-                      Demo: demo@company.com / demo123
+                      Demo: demo@company.com / MagnaDemo2025!
                     </p>
                   </div>
 
-                  <div className="text-center text-sm">
-                    <span className="text-muted-foreground">Don't have an account? </span>
-                    <Link href="/register" className="text-primary hover:underline">
-                      Register
-                    </Link>
-                  </div>
+
                 </form>
               </CardContent>
             </Card>
@@ -180,11 +175,7 @@ export default function LoginPage() {
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
 
-                  <div className="text-center text-sm">
-                    <p className="text-muted-foreground text-xs">
-                      Don't have an account? You'll receive an invitation link from your company.
-                    </p>
-                  </div>
+
                 </form>
               </CardContent>
             </Card>
@@ -194,4 +185,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -18,15 +18,13 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/login">
               <Button size="lg" className="w-full sm:w-auto">
-                Login
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                Create Account
+                Sign In
               </Button>
             </Link>
           </div>
+          <p className="text-sm text-muted-foreground mt-6">
+            Contact your administrator for access credentials
+          </p>
         </div>
 
         {/* Features */}

@@ -34,14 +34,15 @@ export default function InviteInvestorsPage() {
   const [invitationLink, setInvitationLink] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
   const [investorInfo, setInvestorInfo] = useState<any>(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     async function loadRounds() {
       try {
         const data = await roundsAPI.list();
         setRounds(data);
-      } catch (error) {
-        console.error('Failed to load rounds:', error);
+      } catch {
+        // Silently fail - user will see empty select
       } finally {
         setLoading(false);
       }
@@ -54,13 +55,14 @@ export default function InviteInvestorsPage() {
       await navigator.clipboard.writeText(invitationLink);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy link:', err);
+    } catch {
+      // Silently fail copying
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage("");
     
     const form = e.currentTarget as HTMLFormElement;
     const formData = new FormData(form);
@@ -69,17 +71,17 @@ export default function InviteInvestorsPage() {
     const walletAddress = formData.get('wallet') as string;
     
     if (!email) {
-      alert('Please enter an email address');
+      setErrorMessage('Please enter an email address');
       return;
     }
     
     if (!name) {
-      alert('Please enter a name');
+      setErrorMessage('Please enter a name');
       return;
     }
     
     if (selectedRounds.length === 0) {
-      alert('Please select at least one round');
+      setErrorMessage('Please select at least one round');
       return;
     }
 
@@ -126,12 +128,12 @@ export default function InviteInvestorsPage() {
       setInvestorInfo(result.data.investor);
       setShowInviteDialog(true);
       
-      // Reset form
+      // Reset form and error
       form.reset();
       setSelectedRounds([]);
-    } catch (error: any) {
-      console.error('Failed to create invitation:', error);
-      alert(error.message || 'Failed to create invitation. Please try again.');
+      setErrorMessage("");
+    } catch (error) {
+      setErrorMessage(typeof error === 'string' ? error : 'Failed to create invitation. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -155,6 +157,23 @@ export default function InviteInvestorsPage() {
 
       <div className="max-w-3xl mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Error Message */}
+          {errorMessage && (
+            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+              <X className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMessage("")}
+                className="text-destructive hover:text-destructive/80"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Investor Details */}
           <Card>
             <CardHeader>

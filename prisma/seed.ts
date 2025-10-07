@@ -11,7 +11,7 @@ async function main() {
   console.log('🌱 Starting database seed...');
 
   // Create a demo company
-  const demoCompanyPassword = await hashPassword('demo123');
+  const demoCompanyPassword = await hashPassword('MagnaDemo2025!');
   const demoCompany = await prisma.company.create({
     data: {
       email: 'demo@company.com',
@@ -296,7 +296,7 @@ async function main() {
   console.log('\n✨ Database seeded successfully!');
   console.log('\n📝 Demo Credentials:');
   console.log('   Company Email: demo@company.com');
-  console.log('   Password: demo123');
+  console.log('   Password: MagnaDemo2025!');
   console.log('\n   Investor Logins (email / password):');
   console.log('   - john.smith@example.com / investor123');
   console.log('   - sarah.johnson@example.com / investor123');
@@ -312,4 +312,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

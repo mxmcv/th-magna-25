@@ -47,6 +47,11 @@ export async function POST(request: NextRequest) {
       throw new ApiError('One or more rounds not found or access denied', 403, ErrorCodes.FORBIDDEN);
     }
 
+    // Get base URL from request headers
+    const host = request.headers.get('host');
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const baseUrl = `${protocol}://${host}`;
+
     // Create invitations for each round
     const invitations = await Promise.all(
       data.roundIds.map(async (roundId: string) => {
@@ -63,7 +68,7 @@ export async function POST(request: NextRequest) {
         if (existing) {
           return {
             ...existing,
-            invitationLink: generateInvitationLink(existing.token),
+            invitationLink: generateInvitationLink(existing.token, baseUrl),
             alreadyExists: true,
           };
         }
@@ -105,7 +110,7 @@ export async function POST(request: NextRequest) {
 
         return {
           ...invitation,
-          invitationLink: generateInvitationLink(token),
+          invitationLink: generateInvitationLink(token, baseUrl),
           alreadyExists: false,
         };
       })

@@ -154,9 +154,17 @@ export async function DELETE(
       );
     }
 
+    // Get round data before deletion for audit log
+    const round = await prisma.round.findUnique({
+      where: { id },
+    });
+
     await prisma.round.delete({
       where: { id },
     });
+
+    // Audit log
+    await auditHelpers.logRoundDeleted(id, company.id, round);
 
     return successResponse({ message: 'Round deleted successfully' });
   } catch (error) {
