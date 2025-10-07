@@ -24,8 +24,10 @@
 .DS_Store
 *.pem
 
-# documentation
+# documentation (ignore all .md files except README.md and SETUP.md)
 *.md
+!README.md
+!SETUP.md
 
 # debug
 npm-debug.log*
