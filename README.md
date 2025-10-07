@@ -1,6 +1,6 @@
 # Magna Fundraising Platform
 
-A production-ready Web3 fundraising management system that bridges the gap between capital raising and token distribution. Built for the Magna 2025 Internship Take-Home Challenge.
+A Web3 fundraising management system that bridges the gap between capital raising and token distribution. Built for the Magna 2025 Internship Take-Home Challenge.
 
 <img width="1502" height="776" alt="Screenshot 2025-10-07 at 2 27 31 AM" src="https://github.com/user-attachments/assets/3d074e4b-fede-4775-be81-f8b7d34d2d16" />
 
@@ -53,7 +53,7 @@ Think of it as the missing piece between "we're raising capital" and "we're dist
 
 **Audit & Compliance**
 - Comprehensive audit logs for every critical operation
-- Filterable by entity type, action, date range
+- Filterable by entity type, action
 - Exportable to CSV for compliance reporting
 - Immutable log table (no updates/deletes, only inserts)
 
@@ -117,8 +117,8 @@ Visit http://localhost:3000 (or whatever port it tells you)
 - Password: `MagnaDemo2025!`
 
 **Investors:**
-- Email: `investor1@example.com` (or investor2, investor3, investor4)
-- Password: `Investor123!`
+- Email: `demoemail@example.com`
+- Password: `DemoMagna1006`
 
 ## How to Test It
 
@@ -230,54 +230,17 @@ th-magna-25/
 └── IMPLEMENTATION_NOTES.md    # architectural decisions explained
 ```
 
-## Meeting the Evaluation Criteria
-
-### Code Quality
-- **Clean code** - Consistent naming, logical organization, functions do one thing
-- **TypeScript** - Strict mode, comprehensive types, minimal `any` usage
-- **React best practices** - Proper hooks, component composition, client/server boundaries
-- **Separation of concerns** - API/lib/components/UI clearly separated
-- **Modular** - Reusable validation, centralized auth, audit logging service
-- **Error handling** - Custom error classes, standardized responses, graceful degradation
-- **Edge cases** - Expired invitations, min/max validation, round status transitions
-
-### Data Model & API
-- **Normalized schema** - Proper relationships, no redundant data
-- **Scalable** - Indexed fields, efficient queries, JSON for flexibility
-- **RESTful** - Standard methods (GET/POST/PATCH/DELETE), resource-based URLs
-- **Intuitive** - Clear naming, consistent patterns, proper status codes
-- **Type-safe** - Prisma generates types, end-to-end type safety
-
-### User Experience
-- **Intuitive** - Clear navigation, logical flows, minimal steps
-- **Visual hierarchy** - Important info prominent, clear grouping
-- **Responsive** - Works on mobile, tablet, desktop
-- **Professional** - Clean design, consistent spacing, accessible colors
-
-### Data Integrity & Security
-- **Audit logs** - Every critical operation logged with user attribution
-- **Validation** - Client and server, shared logic, comprehensive checks
-- **RBAC** - Company vs investor roles, resource ownership verification
-- **Security** - Password hashing, session expiration, secure tokens
-- **Data isolation** - Companies can't see each other's data, investors only see invited rounds
-
-### Scope Discipline
-- **Built core well** - All required features complete and polished
-- **Strategic extra feature** - Token allocation directly relevant to Magna's business
-- **No feature creep** - Focused on requirements, resisted adding unnecessary features
-- **Depth over breadth** - Complete implementation of fewer features
-
 ## Development Process
 
 ### Using Cursor AI
 
-Used Cursor extensively for:
+Used Cursor for:
 - Initial component scaffolding
 - API route boilerplate
 - Prisma schema setup
 - UI component generation
 
-**But** - Reviewed every line of generated code. Refactored for clarity, added validation, improved error handling, wrote strategic comments. Cursor was a productivity tool, not a replacement for engineering judgment.
+**But** - Reviewed all generated code. Refactored for clarity, added validation, improved error handling, wrote strategic comments. Cursor was a productivity tool, not a replacement for engineering judgment.
 
 ### Things I Learned
 
@@ -323,7 +286,6 @@ The `postinstall` script automatically runs `prisma generate` on deployment.
 ## What I'd Do With More Time
 
 - Email integration for invitations (SendGrid)
-- Bulk operations UI (invite 50 investors at once)
 - Data export for all entities (rounds, investors, contributions)
 - Investor document upload (KYC documents)
 - Round templates (reuse common configurations)
@@ -332,13 +294,6 @@ The `postinstall` script automatically runs `prisma generate` on deployment.
 - Charts and analytics (contribution timeline, investor distribution)
 
 But per the requirements, better to build specified features well than add everything half-done.
-
-## Additional Documentation
-
-- `IMPLEMENTATION_NOTES.md` - Architectural decisions and justifications
-- `EVALUATION_CHECKLIST.md` - Comprehensive review against requirements
-- `DATABASE_SETUP.md` - Detailed database setup guide
-- `QUICK_TEST_GUIDE.md` - Step-by-step testing instructions
 
 ---
 
