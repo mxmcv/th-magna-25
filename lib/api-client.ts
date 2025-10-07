@@ -15,7 +15,6 @@ import type {
   CreateContributionRequest,
   InvitationRequest,
   LoginRequest,
-  RegisterRequest,
   AuthSession,
 } from './types';
 
@@ -108,11 +107,6 @@ class ApiClient {
      * Login to the platform
      */
     login: (data: LoginRequest) => this.post<AuthSession>('/api/auth/login', data),
-    
-    /**
-     * Register a new company account
-     */
-    register: (data: RegisterRequest) => this.post<{ userId: string }>('/api/auth/register', data),
     
     /**
      * Logout from the platform

@@ -22,7 +22,6 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string, userType?: UserType) => Promise<void>;
   logout: () => Promise<void>;
-  register: (email: string, name: string, password: string) => Promise<void>;
   refreshAuth: () => Promise<void>;
 }
 
@@ -61,19 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
-  async function register(email: string, name: string, password: string) {
-    // Register the company
-    await auth.register({ email, name, password });
-    // After registration, login to get session
-    await login(email, password, 'company');
-  }
-
   async function refreshAuth() {
     await checkAuth();
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register, refreshAuth }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshAuth }}>
       {children}
     </AuthContext.Provider>
   );

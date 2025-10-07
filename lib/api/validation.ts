@@ -183,33 +183,6 @@ export function validateContributionData(data: any, round: any): {
 }
 
 /**
- * Validate company registration data
- */
-export function validateCompanyRegistration(data: any): {
-  email: string;
-  name: string;
-  password: string;
-} {
-  if (!data.email || !validateEmail(data.email)) {
-    throw new ApiError('Valid email is required', 400, ErrorCodes.INVALID_INPUT);
-  }
-
-  if (!data.name || typeof data.name !== 'string' || data.name.trim().length < 2) {
-    throw new ApiError('Company name must be at least 2 characters', 400, ErrorCodes.INVALID_INPUT);
-  }
-
-  if (!data.password || typeof data.password !== 'string' || data.password.length < 6) {
-    throw new ApiError('Password must be at least 6 characters', 400, ErrorCodes.INVALID_INPUT);
-  }
-
-  return {
-    email: data.email.toLowerCase().trim(),
-    name: data.name.trim(),
-    password: data.password,
-  };
-}
-
-/**
  * Parse request body safely
  */
 export async function parseRequestBody(request: Request): Promise<any> {

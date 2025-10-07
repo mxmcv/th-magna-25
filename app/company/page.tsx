@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, Users, CircleDollarSign, ArrowUpRight } from "lucide-react";
+import { Plus, TrendingUp, Users, CircleDollarSign, ArrowUpRight, Download } from "lucide-react";
 import Link from "next/link";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { StatusBadge } from "@/components/dashboard/status-badge";
@@ -11,6 +11,7 @@ import { formatCompactCurrency, formatCurrency, calculatePercentage, formatRelat
 import { rounds as roundsAPI, contributions as contributionsAPI } from "@/lib/api-client";
 import { useState, useEffect } from "react";
 import { DashboardSkeleton } from "@/components/skeletons";
+import { exportDashboardToCSV, prepareDashboardExportData } from "@/lib/csv-export";
 
 export default function CompanyDashboard() {
   const [rounds, setRounds] = useState<any[]>([]);
@@ -91,6 +92,11 @@ export default function CompanyDashboard() {
     },
   ];
 
+  const handleExportCSV = () => {
+    const exportData = prepareDashboardExportData(rounds, recentActivity);
+    exportDashboardToCSV(exportData);
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
@@ -98,12 +104,23 @@ export default function CompanyDashboard() {
           <h1 className="text-2xl md:text-3xl font-bold mb-2">Dashboard</h1>
           <p className="text-sm md:text-base text-muted-foreground">Overview of your fundraising activity</p>
         </div>
-        <Link href="/company/rounds/new">
-          <Button size="lg" className="gap-2 w-full sm:w-auto">
-            <Plus className="w-4 h-4" />
-            Create Round
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            onClick={handleExportCSV}
+            variant="outline" 
+            size="lg" 
+            className="gap-2 flex-1 sm:flex-initial"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
           </Button>
-        </Link>
+          <Link href="/company/rounds/new" className="flex-1 sm:flex-initial">
+            <Button size="lg" className="gap-2 w-full">
+              <Plus className="w-4 h-4" />
+              Create Round
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Grid */}

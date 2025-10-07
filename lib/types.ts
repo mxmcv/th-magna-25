@@ -184,12 +184,6 @@ export interface LoginRequest {
   userType: UserType;
 }
 
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  name: string;
-}
-
 // Filter and search types
 export interface InvestorFilters {
   search?: string;
