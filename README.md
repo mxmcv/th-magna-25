@@ -2,6 +2,8 @@
 
 A production-ready Web3 fundraising management system that bridges the gap between capital raising and token distribution. Built for the Magna 2025 Internship Take-Home Challenge.
 
+<img width="1502" height="776" alt="Screenshot 2025-10-07 at 2 27 31 AM" src="https://github.com/user-attachments/assets/3d074e4b-fede-4775-be81-f8b7d34d2d16" />
+
 ## What This Does
 
 Magna already manages $10B+ in digital assets through vesting and custody. But there's a gap - projects need a way to coordinate fundraising *before* tokens launch. This platform fills that gap by helping projects:
