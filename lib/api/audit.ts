@@ -227,16 +227,6 @@ export const auditHelpers = {
       userType,
     }),
 
-  logUserRegistration: (userId: string, userType: 'company' | 'investor', userData: any) =>
-    createAuditLog({
-      entityType: userType === 'company' ? 'Company' : 'Investor',
-      entityId: userId,
-      action: 'REGISTER',
-      userId,
-      userType,
-      changes: { created: userData },
-    }),
-
   // token allocation feature - my "one extra feature"
   // tracks when companies generate allocation reports
   logTokenAllocationGenerated: (roundId: string, companyId: string, metadata: any) =>
