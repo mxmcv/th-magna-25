@@ -378,9 +378,6 @@ export default function EditRoundPage({ params }: { params: Promise<{ id: string
                     required
                     className="h-11"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Must be between 1900 and 2100
-                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endDate" className="text-sm font-medium">
@@ -396,9 +393,6 @@ export default function EditRoundPage({ params }: { params: Promise<{ id: string
                     required
                     className="h-11"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Must be after start date and between 1900 and 2100
-                  </p>
                 </div>
               </div>
             </CardContent>

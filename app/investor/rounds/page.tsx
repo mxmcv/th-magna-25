@@ -27,6 +27,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { rounds as roundsAPI, contributions as contributionsAPI } from "@/lib/api-client";
 import { GridViewSkeleton } from "@/components/skeletons";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 
 export default function AvailableRoundsPage() {
   const [contributionAmount, setContributionAmount] = useState("");
@@ -159,7 +160,7 @@ export default function AvailableRoundsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CardTitle className="text-2xl">{round.name}</CardTitle>
-                      <Badge className="bg-primary/10 text-primary">Active</Badge>
+                      <StatusBadge status={round.status} />
                       {hasInvested && (
                         <Badge variant="outline" className="text-xs">
                           Already Invested: ${(round.myContribution / 1000).toFixed(0)}K

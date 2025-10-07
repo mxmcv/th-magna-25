@@ -179,7 +179,7 @@ export default function RoundsPage() {
                       <Users className="w-4 h-4" />
                       Participants
                     </div>
-                    <div className="text-2xl font-bold">{round.participants}</div>
+                    <div className="text-2xl font-bold">{round._count?.invitations || 0}</div>
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -193,7 +193,7 @@ export default function RoundsPage() {
                   <div className="space-y-1">
                     <div className="text-muted-foreground text-sm">Accepted Tokens</div>
                     <div className="flex gap-1">
-                      {round.acceptedTokens.map((token) => (
+                      {round.acceptedTokens.map((token: string) => (
                         <Badge key={token} variant="outline" className="text-xs">
                           {token}
                         </Badge>
@@ -203,8 +203,8 @@ export default function RoundsPage() {
                   <div className="space-y-1">
                     <div className="text-muted-foreground text-sm">Avg Contribution</div>
                     <div className="text-lg font-semibold">
-                      {round.participants > 0 
-                        ? `$${((round.raised / round.participants) / 1000).toFixed(0)}K`
+                      {round._count?.invitations > 0 
+                        ? `$${((round.raised / round._count.invitations) / 1000).toFixed(0)}K`
                         : '$0K'}
                     </div>
                   </div>

@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle, XCircle, Lock, Mail, User } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 function AcceptInvitationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+  const { refreshAuth } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -85,6 +87,9 @@ function AcceptInvitationContent() {
         setError(result.error?.message || 'Failed to accept invitation');
         return;
       }
+
+      // Refresh auth context to load the new investor user data
+      await refreshAuth();
 
       // Redirect to investor dashboard
       router.push('/investor');

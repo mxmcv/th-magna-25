@@ -15,7 +15,6 @@ import {
  */
 export function validateRoundData(data: any): {
   name: string;
-  companyId: string;
   description?: string;
   target: number;
   minContribution: number;
@@ -27,10 +26,6 @@ export function validateRoundData(data: any): {
   // Required fields
   if (!data.name || typeof data.name !== 'string' || data.name.trim().length === 0) {
     throw new ApiError('Round name is required', 400, ErrorCodes.MISSING_REQUIRED_FIELD);
-  }
-
-  if (!data.companyId || typeof data.companyId !== 'string') {
-    throw new ApiError('Company ID is required', 400, ErrorCodes.MISSING_REQUIRED_FIELD);
   }
 
   // Validate target
@@ -83,7 +78,6 @@ export function validateRoundData(data: any): {
 
   return {
     name: data.name.trim(),
-    companyId: data.companyId,
     description: data.description?.trim(),
     target,
     minContribution,

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   Table,
   TableBody,
@@ -150,7 +151,7 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-2xl md:text-3xl font-bold">{round.name}</h1>
-              <Badge className="bg-primary/10 text-primary">Active</Badge>
+              <StatusBadge status={round.status} />
             </div>
             <p className="text-sm md:text-base text-muted-foreground max-w-3xl">
               {round.description}
@@ -281,8 +282,8 @@ export default function RoundDetailsPage({ params }: { params: Promise<{ id: str
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl md:text-3xl font-bold">{round.participants}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active investors</p>
+            <div className="text-2xl md:text-3xl font-bold">{round._count?.invitations || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">Invited investors</p>
           </CardContent>
         </Card>
         <Card>

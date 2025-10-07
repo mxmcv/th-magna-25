@@ -11,10 +11,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, Clock, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, Clock, TrendingUp, CircleDollarSign } from "lucide-react";
 import { useState, useEffect } from "react";
 import { contributions as contributionsAPI } from "@/lib/api-client";
 import { TableViewSkeleton } from "@/components/skeletons";
+import { StatusBadge } from "@/components/dashboard/status-badge";
+import Link from "next/link";
 
 export default function ContributionHistoryPage() {
   const [contributions, setContributions] = useState<any[]>([]);
@@ -118,7 +121,21 @@ export default function ContributionHistoryPage() {
           <CardDescription>Detailed breakdown of all your investments</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {contributions.map((contribution) => {
+          {contributions.length === 0 ? (
+            <div className="text-center py-12">
+              <CircleDollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Contributions Yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                You haven't made any contributions to fundraising rounds
+              </p>
+              <Link href="/investor/rounds">
+                <Button>
+                  Browse Available Rounds
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            contributions.map((contribution) => {
             const round = contribution.round;
             const progress = round && round.target > 0 ? (round.raised / round.target) * 100 : 0;
             const isCompleted = round?.status === 'CLOSED';
@@ -132,9 +149,7 @@ export default function ContributionHistoryPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-lg">{round?.name || 'Unknown Round'}</h3>
-                      <Badge className={isCompleted ? "bg-green-500/10 text-green-500" : "bg-primary/10 text-primary"}>
-                        {isCompleted ? "Completed" : "Active"}
-                      </Badge>
+                      <StatusBadge status={round?.status} />
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">
                       {contribution.round?.company?.name || 'Company'} • Contributed{" "}
@@ -180,7 +195,8 @@ export default function ContributionHistoryPage() {
                 </div>
               </div>
             );
-          })}
+          })
+          )}
         </CardContent>
       </Card>
 
@@ -191,51 +207,61 @@ export default function ContributionHistoryPage() {
           <CardDescription className="text-sm">All contribution transactions in chronological order</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Round</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Token</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Transaction</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contributions
-                .sort((a, b) => new Date(b.contributedAt || 0).getTime() - new Date(a.contributedAt || 0).getTime())
-                .map((contribution) => (
-                  <TableRow key={contribution.id}>
-                    <TableCell className="font-medium">
-                      {contribution.contributedAt 
-                        ? new Date(contribution.contributedAt).toLocaleDateString() 
-                        : 'Unknown'}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{contribution.round?.name || 'Unknown Round'}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {contribution.round?.company?.name || 'Company'}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      ${contribution.amount.toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{contribution.token}</Badge>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(contribution.status?.toLowerCase() || 'pending')}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {contribution.transactionHash || 'N/A'}
-                    </TableCell>
+          {contributions.length === 0 ? (
+            <div className="text-center py-12">
+              <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Transaction History</h3>
+              <p className="text-sm text-muted-foreground">
+                Your contribution transactions will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Round</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Token</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Transaction</TableHead>
                   </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {contributions
+                    .sort((a, b) => new Date(b.contributedAt || 0).getTime() - new Date(a.contributedAt || 0).getTime())
+                    .map((contribution) => (
+                      <TableRow key={contribution.id}>
+                        <TableCell className="font-medium">
+                          {contribution.contributedAt 
+                            ? new Date(contribution.contributedAt).toLocaleDateString() 
+                            : 'Unknown'}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{contribution.round?.name || 'Unknown Round'}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {contribution.round?.company?.name || 'Company'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          ${contribution.amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{contribution.token}</Badge>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(contribution.status?.toLowerCase() || 'pending')}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {contribution.transactionHash || 'N/A'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

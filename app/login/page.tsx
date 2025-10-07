@@ -175,7 +175,11 @@ export default function LoginPage() {
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
 
-
+                  <div className="text-center text-sm">
+                    <p className="text-muted-foreground">
+                      Demo: demoemail@example.com / DemoMagna1006
+                    </p>
+                  </div>
                 </form>
               </CardContent>
             </Card>

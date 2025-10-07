@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, DollarSign, Target, ArrowUpRight, CheckCircle, AlertCircle } from "lucide-react";
+import { TrendingUp, DollarSign, Target, ArrowUpRight, CheckCircle, AlertCircle, CircleDollarSign } from "lucide-react";
 import Link from "next/link";
+import { StatusBadge } from "@/components/dashboard/status-badge";
 import {
   Dialog,
   DialogContent,
@@ -199,46 +200,59 @@ export default function InvestorDashboard() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {myInvestments.map((investment) => {
-            const progress = investment.target > 0 ? (investment.totalRaised / investment.target) * 100 : 0;
-            return (
-              <div key={investment.id} className="space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold">{investment.roundName || 'Unknown Round'}</h3>
-                      <Badge variant="secondary" className="bg-primary/10 text-primary">
-                        Active
-                      </Badge>
+          {myInvestments.length === 0 ? (
+            <div className="text-center py-12">
+              <CircleDollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Active Investments</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                You haven't made any contributions yet
+              </p>
+              <Link href="/investor/rounds">
+                <Button>
+                  Browse Available Rounds
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            myInvestments.map((investment) => {
+              const progress = investment.target > 0 ? (investment.totalRaised / investment.target) * 100 : 0;
+              return (
+                <div key={investment.id} className="space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold">{investment.roundName || 'Unknown Round'}</h3>
+                        <StatusBadge status={investment.status} />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Contributed {investment.contributedDate 
+                          ? new Date(investment.contributedDate).toLocaleDateString()
+                          : 'Unknown date'}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Contributed {investment.contributedDate 
-                        ? new Date(investment.contributedDate).toLocaleDateString()
-                        : 'Unknown date'}
-                    </p>
+                    <div className="text-right">
+                      <div className="text-lg font-bold">
+                        {investment.myContribution > 0 ? `$${(investment.myContribution / 1000).toFixed(0)}K` : '$0'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Your contribution • {investment.token}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold">
-                      {investment.myContribution > 0 ? `$${(investment.myContribution / 1000).toFixed(0)}K` : '$0'}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Your contribution • {investment.token}
+                  <div className="space-y-2">
+                    <Progress value={progress} className="h-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>
+                        ${((investment.totalRaised || 0) / 1000000).toFixed(1)}M of $
+                        {((investment.target || 0) / 1000000).toFixed(1)}M raised
+                      </span>
+                      <span>{progress.toFixed(1)}% funded</span>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Progress value={progress} className="h-2" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>
-                      ${((investment.totalRaised || 0) / 1000000).toFixed(1)}M of $
-                      {((investment.target || 0) / 1000000).toFixed(1)}M raised
-                    </span>
-                    <span>{progress.toFixed(1)}% funded</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </CardContent>
       </Card>
 
@@ -259,8 +273,17 @@ export default function InvestorDashboard() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-            {availableRounds.map((round) => {
+          {availableRounds.length === 0 ? (
+            <div className="text-center py-12">
+              <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Available Rounds</h3>
+              <p className="text-sm text-muted-foreground">
+                There are currently no active fundraising rounds you've been invited to
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              {availableRounds.map((round) => {
               const progress = (round.raised / round.target) * 100;
               const myInvestment = myInvestments.find(
                 (inv) => inv.roundName === round.name
@@ -396,7 +419,8 @@ export default function InvestorDashboard() {
                 </Card>
               );
             })}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

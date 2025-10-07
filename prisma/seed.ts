@@ -23,8 +23,18 @@ async function main() {
 
   // Create demo investors with passwords (for those who have accepted invitations)
   const demoPassword = await hashPassword('investor123');
+  const demoInvestorPassword = await hashPassword('DemoMagna1006');
   
   const investors = await Promise.all([
+    prisma.investor.create({
+      data: {
+        email: 'demoemail@example.com',
+        name: 'Demo Investor',
+        password: demoInvestorPassword,
+        walletAddress: '0x1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t',
+        status: 'ACTIVE',
+      },
+    }),
     prisma.investor.create({
       data: {
         email: 'john.smith@example.com',
@@ -295,9 +305,9 @@ async function main() {
 
   console.log('\n✨ Database seeded successfully!');
   console.log('\n📝 Demo Credentials:');
-  console.log('   Company Email: demo@company.com');
-  console.log('   Password: MagnaDemo2025!');
-  console.log('\n   Investor Logins (email / password):');
+  console.log('   Company: demo@company.com / MagnaDemo2025!');
+  console.log('   Investor: demoemail@example.com / DemoMagna1006');
+  console.log('\n   Additional Investor Logins:');
   console.log('   - john.smith@example.com / investor123');
   console.log('   - sarah.johnson@example.com / investor123');
   console.log('   - mike.chen@example.com / investor123');
